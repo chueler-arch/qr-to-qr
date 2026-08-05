@@ -1,0 +1,14 @@
+node_modules/
+.venv/
+.wrangler/
+.dev.vars
+.env
+.env.*
+!.env.example
+*.log
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

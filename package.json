@@ -2,9 +2,9 @@
   "name": "qrtoqr",
   "version": "1.0.0",
   "description": "QRtoQR は、スマホで使う前提の静的ウェブアプリです。",
-  "main": "app.js",
+  "main": "public/app.js",
   "scripts": {
-    "start": "py -m http.server 4173",
+    "start": "py -m http.server 4173 --directory public",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

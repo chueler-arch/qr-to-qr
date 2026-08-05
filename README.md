@@ -13,7 +13,7 @@ QRtoQR は、スマホで使う前提の静的ウェブアプリです。
 ## ローカル起動
 1. このフォルダで以下を実行
    ```sh
-   python -m http.server 4173
+   python -m http.server 4173 --directory public
    ```
 2. ブラウザで http://localhost:4173 を開く
 
@@ -25,10 +25,12 @@ QRtoQR は、スマホで使う前提の静的ウェブアプリです。
 4. 公開 URL を確認
 
 ### Cloudflare Pages
-1. Cloudflare にログイン
-2. Pages → Create Project → Direct Upload
-3. このフォルダをアップロード
-4. `index.html` を公開対象にしてデプロイ
+GitHub の `master` ブランチへの push を検出して、自動デプロイします。
+
+- Framework preset: `None`
+- Build command: 空欄
+- Build output directory: `public`
+- Production branch: `master`
 
 ## 注意点
 - Google Spreadsheet は公開設定が必要です
