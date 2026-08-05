@@ -3,114 +3,124 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#08111f" />
     <title>QRtoQR</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="app-shell">
-      <header class="topbar">
-        <div>
-          <h1>QRtoQR</h1>
-          <p>スマホで読み取ったキーから対応値をQR/バーコードで表示</p>
+    <main class="app-shell">
+      <header class="app-header">
+        <div class="brand" aria-label="QRtoQR">
+          <svg class="app-icon" viewBox="0 0 40 40" aria-hidden="true">
+            <rect width="40" height="40" rx="11" fill="currentColor" />
+            <path d="M9 9h9v9H9zm3 3v3h3v-3zm10-3h9v9h-9zm3 3v3h3v-3zM9 22h9v9H9zm3 3v3h3v-3zm11-3h3v3h-3zm5 0h3v6h-3zm-6 5h4v4h-4zm6 3h3v1h-3z" fill="#07111f" />
+          </svg>
+          <span>QRtoQR</span>
         </div>
+        <button id="openImportBtn" class="header-action" type="button">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 15v4h14v-4" /></svg>
+          <span>データインポート</span>
+        </button>
       </header>
 
-      <main class="layout">
-        <section class="panel import-panel">
-          <h2>インポート</h2>
-          <div class="import-grid">
-            <label class="file-picker">
-              <span>Excel / CSV を選択</span>
-              <input id="fileInput" type="file" accept=".csv,.xlsx,.xls,.xlsm" />
-            </label>
+      <section class="camera-section" aria-label="カメラ">
+        <video id="video" playsinline muted autoplay></video>
+        <div class="camera-shade" aria-hidden="true"></div>
+        <div class="section-label">CAMERA</div>
+        <button id="openCameraSettingsBtn" class="icon-button section-settings" type="button" aria-label="カメラ設定">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.38.34.72.65.98.3.26.7.4 1.1.42H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+        </button>
+        <div class="scan-guide" aria-hidden="true"><span></span></div>
+        <div id="cameraPlaceholder" class="camera-placeholder">
+          <div class="loader"></div>
+          <p>カメラを起動しています</p>
+          <button id="retryCameraBtn" class="secondary-button is-hidden" type="button">もう一度試す</button>
+        </div>
+        <p id="scanResult" class="scan-result" aria-live="polite">コードを枠内に合わせてください</p>
 
-            <div class="sheet-url-box">
-              <label for="googleSheetUrl">公開 Google Spreadsheet URL</label>
-              <div class="row">
-                <input id="googleSheetUrl" type="url" placeholder="https://docs.google.com/spreadsheets/..." />
-                <button id="loadGoogleSheetBtn" type="button">読み込み</button>
-              </div>
-            </div>
+        <aside id="cameraSettings" class="camera-settings side-panel" aria-hidden="true">
+          <div class="panel-title-row">
+            <div><span class="eyebrow">CAMERA</span><h2>カメラ設定</h2></div>
+            <button class="icon-button close-button" data-close="cameraSettings" type="button" aria-label="閉じる">×</button>
           </div>
-
-          <div class="status-box">
-            <p id="statusText">インポートされたレコード数: 0</p>
+          <div class="vertical-controls">
+            <label class="vertical-control">
+              <span id="zoomValue">1.0×</span>
+              <input id="zoomControl" class="vertical-range" type="range" min="1" max="4" step="0.1" value="1" orient="vertical" />
+              <strong>ズーム</strong>
+            </label>
+            <label class="vertical-control">
+              <span id="focusValue">自動</span>
+              <input id="focusControl" class="vertical-range" type="range" min="0" max="1" step="0.01" value="0.5" orient="vertical" />
+              <strong>フォーカス</strong>
+            </label>
           </div>
-        </section>
+          <button id="switchCameraBtn" class="switch-camera-button" type="button">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7h-3l-2-2H9L7 7H4v12h16V7Z"/><path d="m15 10 2 2-2 2m2-2H9m0-2-2 2 2 2" /></svg>
+            前面／背面を切替
+          </button>
+        </aside>
+      </section>
 
-        <section class="panel settings-panel">
-          <h2>設定</h2>
-          <div class="settings-grid">
-            <label>
-              <span>出力形式</span>
-              <select id="outputType">
-                <option value="CODE128">CODE128</option>
-                <option value="CODE39">CODE39</option>
-                <option value="EAN13">EAN13</option>
-                <option value="ITF">ITF</option>
-                <option value="QR">QR</option>
-              </select>
-            </label>
+      <section id="barcodeSection" class="barcode-section is-empty" tabindex="0" role="button" aria-label="バーコード表示">
+        <div class="barcode-topline">
+          <div class="section-label dark">OUTPUT</div>
+          <button id="openBarcodeSettingsBtn" class="icon-button section-settings dark-button" type="button" aria-label="バーコード設定">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.38.34.72.65.98.3.26.7.4 1.1.42H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
+          </button>
+        </div>
+        <div id="emptyState" class="empty-state">
+          <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 7h12v12H9zm4 4v4h4v-4zm14-4h12v12H27zm4 4v4h4v-4zM9 27h12v12H9zm4 4v4h4v-4zm15-4h4v4h-4zm7 0h4v8h-4zm-8 8h5v4h-5zm8 3h4v1h-4z"/></svg>
+          <strong>データをインポートしてください</strong>
+          <span>タップしてインポート画面を開く</span>
+        </div>
+        <div id="outputStage" class="output-stage" hidden>
+          <canvas id="barcodeCanvas"></canvas>
+          <p id="valueText" class="value-text">コードをスキャンしてください</p>
+        </div>
+      </section>
+    </main>
 
-            <label>
-              <span>描画サイズ</span>
-              <select id="outputSize">
-                <option value="180">小</option>
-                <option value="240" selected>中</option>
-                <option value="320">大</option>
-              </select>
-            </label>
-
-            <label>
-              <span>ズーム</span>
-              <input id="zoomControl" type="range" min="1" max="4" step="0.1" value="1" />
-            </label>
-
-            <label>
-              <span>フォーカス</span>
-              <input id="focusControl" type="range" min="0" max="1" step="0.01" value="0.5" />
-            </label>
-
-            <button id="toggleTorchBtn" type="button">フラッシュ切替</button>
-          </div>
-        </section>
-
-        <section class="camera-output-grid">
-          <section class="panel camera-panel">
-            <div class="panel-header">
-              <h2>カメラ</h2>
-              <button id="cameraBtn" type="button">カメラ開始</button>
-            </div>
-            <div class="camera-frame">
-              <video id="video" playsinline muted autoplay></video>
-              <div id="cameraPlaceholder" class="camera-placeholder">カメラを開始してください</div>
-            </div>
-            <div class="scan-summary">
-              <p id="scanResult">スキャン結果: なし</p>
-            </div>
-          </section>
-
-          <section class="panel output-panel">
-            <div class="panel-header">
-              <h2>対応値表示</h2>
-            </div>
-            <div class="output-stage">
-              <canvas id="barcodeCanvas"></canvas>
-              <div id="valueText" class="value-text">対応値</div>
-            </div>
-          </section>
-        </section>
-      </main>
-
-      <footer class="footer">
-        <p>QRtoQR • フロントエンド専用 • 無償利用</p>
-      </footer>
+    <div id="importModal" class="modal-layer" aria-hidden="true">
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="importTitle">
+        <div class="panel-title-row">
+          <div><span class="eyebrow">DATA SOURCE</span><h2 id="importTitle">データインポート</h2></div>
+          <button class="icon-button close-button dark-button" data-close="importModal" type="button" aria-label="閉じる">×</button>
+        </div>
+        <label class="file-drop" for="fileInput">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L8 8m4-4 4 4M4 15v5h16v-5" /></svg>
+          <strong>Excel / CSVファイルを選択</strong>
+          <span>.csv, .xlsx, .xls, .xlsm</span>
+          <input id="fileInput" type="file" accept=".csv,.xlsx,.xls,.xlsm" />
+        </label>
+        <div class="divider"><span>または</span></div>
+        <label class="field-label" for="googleSheetUrl">公開Google Spreadsheet</label>
+        <input id="googleSheetUrl" class="text-input" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/..." />
+        <button id="loadGoogleSheetBtn" class="primary-button" type="button">Spreadsheetを読み込む</button>
+        <p id="statusText" class="import-status" aria-live="polite">CSVまたはExcelの2列を、検索キー・表示値として読み込みます。</p>
+      </section>
     </div>
 
-    <script src="vendor/xlsx.full.min.js"></script>
-    <script src="vendor/JsBarcode.all.min.js"></script>
-    <script src="vendor/qrcode.min.js"></script>
-    <script src="vendor/jsQR.min.js"></script>
-    <script src="app.js"></script>
+    <div id="barcodeSettingsModal" class="modal-layer" aria-hidden="true">
+      <section class="modal-card compact-card" role="dialog" aria-modal="true" aria-labelledby="barcodeSettingsTitle">
+        <div class="panel-title-row">
+          <div><span class="eyebrow">OUTPUT</span><h2 id="barcodeSettingsTitle">バーコード設定</h2></div>
+          <button class="icon-button close-button dark-button" data-close="barcodeSettingsModal" type="button" aria-label="閉じる">×</button>
+        </div>
+        <label class="field-label" for="outputType">バーコード形式</label>
+        <select id="outputType" class="text-input">
+          <option value="CODE128">CODE128</option><option value="CODE39">CODE39</option>
+          <option value="EAN13">EAN-13</option><option value="ITF">ITF</option><option value="QR">QRコード</option>
+        </select>
+        <label class="field-label" for="outputSize">描画サイズ</label>
+        <select id="outputSize" class="text-input">
+          <option value="180">小（180px）</option><option value="240">中（240px）</option><option value="320">大（320px）</option>
+        </select>
+        <button class="primary-button" data-close="barcodeSettingsModal" type="button">設定を適用</button>
+      </section>
+    </div>
+
+    <script src="vendor/xlsx.full.min.js"></script><script src="vendor/JsBarcode.all.min.js"></script>
+    <script src="vendor/qrcode.min.js"></script><script src="vendor/jsQR.min.js"></script><script src="app.js"></script>
   </body>
 </html>
