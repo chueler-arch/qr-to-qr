@@ -1,5 +1,5 @@
 const state = {
-  entries: [], outputType: 'CODE128', outputSize: 240, zoom: 1, focus: 0.5,
+  entries: [], columns: [], rawRows: [], outputType: 'CODE128', outputMode: 'uniform', columnFormats: {}, outputSize: 240, zoom: 1, focus: 0.5,
   facingMode: 'environment', stream: null, track: null, scanTimer: null,
   lastCode: '', currentOutputs: [], outputIndex: 0, cameraStarting: false, swipeStartX: null,
 };
@@ -11,21 +11,34 @@ const dom = {
   focusControl: byId('focusControl'), zoomValue: byId('zoomValue'), focusValue: byId('focusValue'),
   switchCameraBtn: byId('switchCameraBtn'), barcodeSection: byId('barcodeSection'), emptyState: byId('emptyState'),
   outputStage: byId('outputStage'), barcodeCanvas: byId('barcodeCanvas'), valueText: byId('valueText'),
-  outputTitle: byId('outputTitle'), outputPager: byId('outputPager'),
+  outputTitle: byId('outputTitle'), outputPager: byId('outputPager'), barcodeWarning: byId('barcodeWarning'),
   importModal: byId('importModal'), barcodeSettingsModal: byId('barcodeSettingsModal'), fileInput: byId('fileInput'),
   googleSheetUrl: byId('googleSheetUrl'), loadGoogleSheetBtn: byId('loadGoogleSheetBtn'), statusText: byId('statusText'),
-  outputType: byId('outputType'), outputSize: byId('outputSize'), openImportBtn: byId('openImportBtn'),
+  outputType: byId('outputType'), outputSize: byId('outputSize'), formatOptions: byId('formatOptions'), formatHelp: byId('formatHelp'),
+  uniformFormatSettings: byId('uniformFormatSettings'), columnFormatSettings: byId('columnFormatSettings'), columnFormatList: byId('columnFormatList'), autoDetectFormatsBtn: byId('autoDetectFormatsBtn'), openImportBtn: byId('openImportBtn'),
   openCameraSettingsBtn: byId('openCameraSettingsBtn'), openBarcodeSettingsBtn: byId('openBarcodeSettingsBtn'),
 };
 
 const STORAGE_KEY = 'qrtoqr-settings';
 const SHEET_URL_STORAGE_KEY = 'qrtoqr-google-sheet-url';
 const tr = (ja, en) => window.QRtoQRI18n?.text(ja, en) || ja;
+const FORMAT_INFO = {
+  CODE128:{name:'CODE128 Auto',max:'実用上80文字程度',maxEn:'About 80 characters in this app',chars:'ASCII文字。内容に応じてA/B/Cを自動切替',charsEn:'ASCII; automatically switches between A/B/C',case:'大文字・小文字を保持',caseEn:'Preserved'},
+  CODE128A:{name:'CODE128 Set A',max:'実用上80文字程度',maxEn:'About 80 characters in this app',chars:'ASCII制御文字、数字、記号、大文字。小文字は使用不可',charsEn:'ASCII controls, digits, symbols, uppercase; no lowercase',case:'小文字不可',caseEn:'Lowercase unavailable'},
+  CODE128B:{name:'CODE128 Set B',max:'実用上80文字程度',maxEn:'About 80 characters in this app',chars:'ASCII 32–127。日本語など非ASCII文字は使用不可',charsEn:'ASCII 32–127; no non-ASCII text',case:'大文字・小文字を保持',caseEn:'Preserved'},
+  CODE128C:{name:'CODE128 Set C',max:'実用上80桁程度',maxEn:'About 80 digits in this app',chars:'数字のみ、桁数は偶数',charsEn:'Digits only; even number of digits',case:'英字使用不可',caseEn:'Letters unavailable'},
+  CODE39:{name:'CODE39',max:'推奨43文字以内',maxEn:'43 characters recommended',chars:'0–9、A–Z、空白、- . $ / + %',charsEn:'0–9, A–Z, space, - . $ / + %',case:'小文字は大文字へ変換',caseEn:'Lowercase converted to uppercase'},
+  EAN13:{name:'EAN-13',max:'12桁または13桁',maxEn:'Exactly 12 or 13 digits',chars:'数字のみ。13桁目はチェックディジット',charsEn:'Digits only; digit 13 is a check digit',case:'英字使用不可',caseEn:'Letters unavailable'},
+  ITF:{name:'ITF',max:'実用上80桁程度',maxEn:'About 80 digits in this app',chars:'数字のみ、桁数は偶数',charsEn:'Digits only; even number of digits',case:'英字使用不可',caseEn:'Letters unavailable'},
+  QR:{name:'QRコード',max:'UTF-8で最大約2,953バイト',maxEn:'Up to about 2,953 UTF-8 bytes',chars:'文字・数字・記号・日本語を使用可能',charsEn:'Text, digits, symbols, and Unicode',case:'大文字・小文字を保持',caseEn:'Preserved'},
+};
 
 function loadSettings() {
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
     if (saved.outputType) state.outputType = saved.outputType;
+    if (saved.outputMode) state.outputMode = saved.outputMode;
+    if (saved.columnFormats) state.columnFormats = saved.columnFormats;
     if (saved.outputSize) state.outputSize = Number(saved.outputSize);
     if (saved.zoom) state.zoom = Number(saved.zoom);
     if (saved.focus !== undefined) state.focus = Number(saved.focus);
@@ -34,7 +47,7 @@ function loadSettings() {
 
 function saveSettings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    outputType: state.outputType, outputSize: state.outputSize, zoom: state.zoom, focus: state.focus,
+    outputType: state.outputType, outputMode: state.outputMode, columnFormats: state.columnFormats, outputSize: state.outputSize, zoom: state.zoom, focus: state.focus,
   }));
 }
 
@@ -67,6 +80,9 @@ function columnName(index) {
 function updateEntries(rows) {
   const normalizedRows = rows.map((row) => row.map((cell) => String(cell ?? '').trim()));
   const titles = normalizedRows[0]?.slice(1) || [];
+  state.rawRows = normalizedRows;
+  const columnCount = Math.max(0, ...normalizedRows.map((row) => row.length - 1));
+  state.columns = Array.from({ length: columnCount }, (_, index) => ({ column: columnName(index + 1), title: titles[index] || `${columnName(index + 1)}列` }));
   state.entries = normalizedRows.map((row) => ({
     key: row[0],
     outputs: row.slice(1).map((value, index) => ({
@@ -75,6 +91,10 @@ function updateEntries(rows) {
       column: columnName(index + 1),
     })).filter((output) => output.value),
   })).filter((row) => row.key && row.outputs.length);
+  state.columnFormats = {};
+  state.columns.forEach(({ column }, index) => { state.columnFormats[column] = detectFormat(normalizedRows.slice(1).map((row) => row[index + 1]).filter(Boolean)); });
+  renderColumnFormatSettings();
+  saveSettings();
   if (!state.entries.length) {
     setImportStatus(tr('有効なデータが見つかりませんでした。2列以上のデータを確認してください。', 'No valid data was found. Check that the data has at least two columns.'), true);
     return false;
@@ -143,34 +163,96 @@ async function importFromGoogleSheet() {
   } catch (error) { setImportStatus(error.message || tr('Spreadsheetの読み込みに失敗しました。', 'Failed to load the Spreadsheet.'), true); }
 }
 
+function detectFormat(values) {
+  if (!values.length) return 'QR';
+  if (values.every((value) => /^\d{12,13}$/.test(value))) return 'EAN13';
+  if (values.every((value) => /^\d+$/.test(value) && value.length % 2 === 0)) return 'CODE128C';
+  if (values.every((value) => /^[\x00-\x5f]+$/.test(value))) return 'CODE128A';
+  if (values.every((value) => /^[\x20-\x7f]+$/.test(value))) return 'CODE128B';
+  return 'QR';
+}
+
+function formatForOutput(output) {
+  return state.outputMode === 'perColumn' ? (state.columnFormats[output.column] || 'QR') : state.outputType;
+}
+
+function analyzeBarcodeValue(value, format) {
+  let encodedValue = value;
+  const warnings = [];
+  if (format === 'CODE39' && /[a-z]/.test(value)) {
+    encodedValue = value.toUpperCase();
+    warnings.push(tr('文字列に小文字が含まれているため、全て大文字化されます。', 'Lowercase letters are present and will be converted to uppercase.'));
+  }
+  const validators = {
+    CODE128: /^[\x00-\x7f]+$/, CODE128A: /^[\x00-\x5f]+$/, CODE128B: /^[\x20-\x7f]+$/, CODE128C: /^(?:\d{2})+$/,
+    CODE39: /^[0-9A-Z\-\. \$\/\+%]+$/, EAN13: /^\d{12,13}$/, ITF: /^(?:\d{2})+$/,
+  };
+  if (validators[format] && !validators[format].test(encodedValue)) warnings.push(tr(`${FORMAT_INFO[format].name}の使用可能文字・桁数の制限に適合しません。`, `The value does not meet the character or length requirements for ${FORMAT_INFO[format].name}.`));
+  if (format === 'EAN13' && /^\d{12}$/.test(encodedValue)) warnings.push(tr('12桁の値にはチェックディジットが自動追加されます。', 'A check digit will be added automatically to the 12-digit value.'));
+  return { encodedValue, warnings, valid: !validators[format] || validators[format].test(encodedValue) };
+}
+
+function showFormatHelp(format) {
+  const info = FORMAT_INFO[format];
+  dom.formatHelp.innerHTML = `<strong>${info.name}</strong><div>${tr('最大文字数', 'Maximum length')}: ${tr(info.max, info.maxEn)}</div><div>${tr('使用できる文字', 'Allowed characters')}: ${tr(info.chars, info.charsEn)}</div><div>${tr('大文字・小文字', 'Letter case')}: ${tr(info.case, info.caseEn)}</div>`;
+}
+
+function renderFormatOptions() {
+  dom.formatOptions.replaceChildren(...Object.entries(FORMAT_INFO).map(([format, info]) => {
+    const button = document.createElement('button'); button.type = 'button'; button.className = 'format-option'; button.textContent = info.name; button.dataset.format = format;
+    button.classList.toggle('is-selected', format === state.outputType); button.setAttribute('role', 'radio'); button.setAttribute('aria-checked', String(format === state.outputType));
+    button.addEventListener('mouseenter', () => showFormatHelp(format)); button.addEventListener('focus', () => showFormatHelp(format));
+    button.addEventListener('mouseleave', () => showFormatHelp(state.outputType));
+    button.addEventListener('click', () => { state.outputType = format; dom.outputType.value = format; renderFormatOptions(); showFormatHelp(format); saveSettings(); if (state.currentOutputs.length) renderOutputPage(); });
+    return button;
+  }));
+  showFormatHelp(state.outputType);
+}
+
+function renderColumnFormatSettings() {
+  const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (char) => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[char]));
+  const options = Object.entries(FORMAT_INFO).map(([value, info]) => `<option value="${value}">${info.name}</option>`).join('');
+  dom.columnFormatList.innerHTML = state.columns.length ? state.columns.map(({ column, title }) => `<div class="column-format-row"><label title="${escapeHtml(title)}">${escapeHtml(title)} ${tr(`(${column}列)`, `(Column ${column})`)}</label><select data-column="${column}">${options}</select></div>`).join('') : `<p class="setting-note">${tr('データをインポートすると列設定が表示されます。', 'Import data to display column settings.')}</p>`;
+  dom.columnFormatList.querySelectorAll('select').forEach((select) => { select.value = state.columnFormats[select.dataset.column] || 'QR'; select.addEventListener('change', () => { state.columnFormats[select.dataset.column] = select.value; saveSettings(); if (state.currentOutputs.length) renderOutputPage(); }); });
+}
+
+function syncOutputModeUI() {
+  document.querySelectorAll('input[name="outputMode"]').forEach((radio) => { radio.checked = radio.value === state.outputMode; });
+  dom.uniformFormatSettings.hidden = state.outputMode !== 'uniform'; dom.columnFormatSettings.hidden = state.outputMode !== 'perColumn';
+}
+
 function clearOutput(message) {
   const context = dom.barcodeCanvas.getContext('2d');
   context.clearRect(0, 0, dom.barcodeCanvas.width, dom.barcodeCanvas.height);
   dom.outputTitle.textContent = tr('出力', 'Output');
   dom.valueText.textContent = message;
+  dom.barcodeWarning.hidden = true; dom.barcodeWarning.textContent = '';
   dom.outputPager.replaceChildren();
 }
 
-function renderBarcode(value) {
+function renderBarcode(value, format = state.outputType) {
   if (!value) { clearOutput(tr('対応するデータがありません', 'No matching data')); return; }
   const canvas = dom.barcodeCanvas;
+  const analysis = analyzeBarcodeValue(value, format);
+  dom.barcodeWarning.hidden = !analysis.warnings.length; dom.barcodeWarning.textContent = analysis.warnings.join(' ');
+  if (!analysis.valid) { const context = canvas.getContext('2d'); context.clearRect(0, 0, canvas.width, canvas.height); dom.valueText.textContent = value; return; }
   try {
-    if (state.outputType === 'QR') {
-      QRCode.toCanvas(canvas, value, { width: state.outputSize, margin: 2 }, (error) => {
+    if (format === 'QR') {
+      QRCode.toCanvas(canvas, analysis.encodedValue, { width: state.outputSize, margin: 2 }, (error) => {
         if (error) clearOutput(tr('QRコードを描画できませんでした', 'Could not render the QR code'));
       });
     } else {
-      JsBarcode(canvas, value, { format: state.outputType, displayValue: false, margin: 8, width: 2, height: Math.max(64, state.outputSize * .48) });
+      JsBarcode(canvas, analysis.encodedValue, { format, displayValue: false, margin: 8, width: 2, height: Math.max(64, state.outputSize * .48) });
     }
     dom.valueText.textContent = value;
-  } catch { clearOutput(tr(`${state.outputType}形式で描画できない値です`, `This value cannot be rendered as ${state.outputType}.`)); }
+  } catch { clearOutput(tr(`${format}形式で描画できない値です`, `This value cannot be rendered as ${format}.`)); }
 }
 
 function renderOutputPage() {
   const output = state.currentOutputs[state.outputIndex];
   if (!output) { clearOutput(tr('対応するデータがありません', 'No matching data')); return; }
   dom.outputTitle.textContent = tr(`${output.title} (${output.column}列)`, `${output.title} (Column ${output.column})`);
-  renderBarcode(output.value);
+  renderBarcode(output.value, formatForOutput(output));
   dom.outputPager.replaceChildren(...state.currentOutputs.map((_, index) => {
     const dot = document.createElement('span');
     dot.classList.toggle('is-active', index === state.outputIndex);
@@ -290,6 +372,7 @@ function initializeEvents() {
   document.querySelectorAll('.modal-layer').forEach((layer) => layer.addEventListener('click', (event) => { if (event.target === layer) closeLayer(layer); }));
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') document.querySelectorAll('.is-open').forEach(closeLayer); });
   document.addEventListener('qrtoqr-language-change', () => {
+    renderFormatOptions(); renderColumnFormatSettings(); syncOutputModeUI();
     if (state.currentOutputs.length) renderOutputPage();
     else if (state.entries.length) clearOutput(tr('コードをスキャンしてください', 'Scan a code'));
   });
@@ -299,6 +382,11 @@ function initializeEvents() {
     localStorage.setItem(SHEET_URL_STORAGE_KEY, dom.googleSheetUrl.value.trim());
   });
   dom.outputType.addEventListener('change', syncOutputSettings); dom.outputSize.addEventListener('change', syncOutputSettings);
+  document.querySelectorAll('input[name="outputMode"]').forEach((radio) => radio.addEventListener('change', () => { state.outputMode = radio.value; syncOutputModeUI(); saveSettings(); if (state.currentOutputs.length) renderOutputPage(); }));
+  dom.autoDetectFormatsBtn.addEventListener('click', () => {
+    state.columns.forEach(({ column }, index) => { state.columnFormats[column] = detectFormat(state.rawRows.slice(1).map((row) => row[index + 1]).filter(Boolean)); });
+    renderColumnFormatSettings(); saveSettings(); if (state.currentOutputs.length) renderOutputPage();
+  });
   dom.outputStage.addEventListener('pointerdown', (event) => { state.swipeStartX = event.clientX; });
   dom.outputStage.addEventListener('pointerup', (event) => {
     if (state.swipeStartX === null) return;
@@ -318,6 +406,7 @@ function init() {
   loadSettings();
   dom.googleSheetUrl.value = localStorage.getItem(SHEET_URL_STORAGE_KEY) || '';
   dom.outputType.value = state.outputType; dom.outputSize.value = String(state.outputSize);
+  renderFormatOptions(); renderColumnFormatSettings(); syncOutputModeUI();
   dom.zoomControl.value = state.zoom; dom.focusControl.value = state.focus;
   dom.zoomValue.textContent = `${state.zoom.toFixed(1)}×`;
   initializeEvents();

@@ -42,7 +42,11 @@
     'QRtoQRは、読み取ったコードを登録データと照合し、対応する値を別のQRコードまたはバーコードとして表示するブラウザアプリです。':'QRtoQR is a browser app that looks up scanned codes in imported data and displays matching values as new QR codes or barcodes.',
     'カメラが映らない場合は、ブラウザのサイト設定でカメラを許可してください。':'If the camera does not appear, allow camera access in your browser’s site settings.',
     'Spreadsheetは「リンクを知っている全員が閲覧可能」など、CSVを取得できる公開設定が必要です。':'The Spreadsheet must be shared publicly so its CSV can be retrieved.',
-    '古い表示が残る場合は、ブラウザを再読み込みしてください。':'If an old screen remains, reload the browser.'
+    '古い表示が残る場合は、ブラウザを再読み込みしてください。':'If an old screen remains, reload the browser.',
+    '設定方法':'Setting Method','全て同一のバーコードを設定する':'Use one barcode format for all columns','列ごとにバーコードを設定する':'Set barcode format by column',
+    '列ごとの設定':'Per-column Settings','自動で設定する':'Auto Detect','インポート値を検査して適切な形式を提案します。自動設定後も変更できます。':'Imported values are inspected to suggest a suitable format. You can change it afterward.',
+    '最大文字数':'Maximum length','使用できる文字':'Allowed characters','大文字・小文字':'Letter case',
+    '出力画面右上の設定ボタンから、QR、CODE128 Auto／Set A／Set B／Set C、CODE39、EAN-13、ITFと描画サイズを選択できます。全列共通または列ごとの設定を選び、インポート値からの自動設定後に手動で変更できます。形式の制限により値が変換される場合は、出力画面に警告が表示されます。':'Choose QR, CODE128 Auto/Set A/Set B/Set C, CODE39, EAN-13, ITF, and render size. Use one format for all columns or configure each column, with automatic detection followed by manual adjustment. A warning appears if format restrictions transform a value.'
   };
   const text = (ja, en) => (getLanguage() === 'en' ? en : ja);
   function getLanguage() { return localStorage.getItem(STORAGE_KEY) === 'en' ? 'en' : 'ja'; }

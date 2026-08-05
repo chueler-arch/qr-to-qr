@@ -93,6 +93,7 @@
           <p id="outputTitle" class="output-title">出力</p>
           <canvas id="barcodeCanvas"></canvas>
           <p id="valueText" class="value-text">コードをスキャンしてください</p>
+          <p id="barcodeWarning" class="barcode-warning" hidden></p>
           <div id="outputPager" class="output-pager" aria-label="出力値のページ"></div>
         </div>
       </section>
@@ -135,11 +136,10 @@
           <div><span class="eyebrow">OUTPUT</span><h2 id="barcodeSettingsTitle">バーコード設定</h2></div>
           <button class="icon-button close-button dark-button" data-close="barcodeSettingsModal" type="button" aria-label="閉じる">×</button>
         </div>
-        <label class="field-label" for="outputType">バーコード形式</label>
-        <select id="outputType" class="text-input">
-          <option value="CODE128">CODE128</option><option value="CODE39">CODE39</option>
-          <option value="EAN13">EAN-13</option><option value="ITF">ITF</option><option value="QR">QRコード</option>
-        </select>
+        <fieldset class="setting-mode"><legend>設定方法</legend><label><input type="radio" name="outputMode" value="uniform" checked> 全て同一のバーコードを設定する</label><label><input type="radio" name="outputMode" value="perColumn"> 列ごとにバーコードを設定する</label></fieldset>
+        <div id="uniformFormatSettings"><span class="field-label">バーコード形式</span><div id="formatOptions" class="format-options" role="radiogroup" aria-label="バーコード形式"></div><div id="formatHelp" class="format-help" aria-live="polite"></div></div>
+        <div id="columnFormatSettings" hidden><div class="column-settings-head"><strong>列ごとの設定</strong><button id="autoDetectFormatsBtn" class="secondary-dark-button" type="button">自動で設定する</button></div><p class="setting-note">インポート値を検査して適切な形式を提案します。自動設定後も変更できます。</p><div id="columnFormatList" class="column-format-list"></div></div>
+        <select id="outputType" hidden aria-hidden="true"><option value="CODE128">CODE128 Auto</option><option value="CODE128A">CODE128 Set A</option><option value="CODE128B">CODE128 Set B</option><option value="CODE128C">CODE128 Set C</option><option value="CODE39">CODE39</option><option value="EAN13">EAN-13</option><option value="ITF">ITF</option><option value="QR">QRコード</option></select>
         <label class="field-label" for="outputSize">描画サイズ</label>
         <select id="outputSize" class="text-input">
           <option value="180">小（180px）</option><option value="240">中（240px）</option><option value="320">大（320px）</option>
