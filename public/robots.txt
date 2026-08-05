@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://qr-to-qr.pages.dev/sitemap.xml

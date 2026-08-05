@@ -19,6 +19,7 @@ const dom = {
 };
 
 const STORAGE_KEY = 'qrtoqr-settings';
+const SHEET_URL_STORAGE_KEY = 'qrtoqr-google-sheet-url';
 
 function loadSettings() {
   try {
@@ -289,6 +290,9 @@ function initializeEvents() {
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') document.querySelectorAll('.is-open').forEach(closeLayer); });
   dom.fileInput.addEventListener('change', (event) => importFromFile(event.target.files[0]));
   dom.loadGoogleSheetBtn.addEventListener('click', importFromGoogleSheet);
+  dom.googleSheetUrl.addEventListener('input', () => {
+    localStorage.setItem(SHEET_URL_STORAGE_KEY, dom.googleSheetUrl.value.trim());
+  });
   dom.outputType.addEventListener('change', syncOutputSettings); dom.outputSize.addEventListener('change', syncOutputSettings);
   dom.outputStage.addEventListener('pointerdown', (event) => { state.swipeStartX = event.clientX; });
   dom.outputStage.addEventListener('pointerup', (event) => {
@@ -307,6 +311,7 @@ function initializeEvents() {
 
 function init() {
   loadSettings();
+  dom.googleSheetUrl.value = localStorage.getItem(SHEET_URL_STORAGE_KEY) || '';
   dom.outputType.value = state.outputType; dom.outputSize.value = String(state.outputSize);
   dom.zoomControl.value = state.zoom; dom.focusControl.value = state.focus;
   dom.zoomValue.textContent = `${state.zoom.toFixed(1)}×`;
