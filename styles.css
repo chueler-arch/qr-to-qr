@@ -1,0 +1,203 @@
+:root {
+  --bg: #0b1020;
+  --panel: #141b33;
+  --panel-2: #1d2748;
+  --text: #f6f8ff;
+  --muted: #aab4de;
+  --accent: #6cc0ff;
+  --border: rgba(255, 255, 255, 0.12);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: Arial, Helvetica, sans-serif;
+  background: linear-gradient(180deg, #0a1124, #111a3a);
+  color: var(--text);
+}
+
+.app-shell {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.topbar {
+  padding: 12px 16px;
+}
+
+.topbar h1 {
+  margin: 0;
+  font-size: 1.6rem;
+}
+
+.topbar p {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.layout {
+  padding: 0 16px 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.panel {
+  background: rgba(20, 27, 51, 0.96);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 12px;
+}
+
+.import-grid,
+.settings-grid {
+  display: grid;
+  gap: 10px;
+}
+
+.row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+input,
+select,
+button {
+  font: inherit;
+}
+
+input[type="file"],
+input[type="url"],
+select,
+button {
+  width: 100%;
+}
+
+input[type="url"],
+select,
+button {
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 1px solid var(--border);
+  background: var(--panel-2);
+  color: var(--text);
+}
+
+button {
+  cursor: pointer;
+  background: linear-gradient(180deg, #2a7cfd, #1360dd);
+  border: none;
+  font-weight: bold;
+}
+
+button:hover {
+  filter: brightness(1.05);
+}
+
+.file-picker {
+  display: block;
+  background: var(--panel-2);
+  border: 1px dashed var(--border);
+  padding: 12px;
+  border-radius: 10px;
+}
+
+.file-picker span,
+label span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.88rem;
+}
+
+.status-box {
+  margin-top: 10px;
+  padding: 10px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 10px;
+}
+
+.camera-output-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 12px;
+}
+
+.panel-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.camera-frame,
+.output-stage {
+  background: var(--bg);
+  border-radius: 14px;
+  min-height: 260px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  overflow: hidden;
+}
+
+#video {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: none;
+}
+
+.camera-placeholder {
+  color: var(--muted);
+  text-align: center;
+}
+
+.scan-summary {
+  margin-top: 8px;
+  color: var(--muted);
+}
+
+#barcodeCanvas {
+  width: 100%;
+  max-width: 320px;
+  height: auto;
+}
+
+.value-text {
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  right: 8px;
+  text-align: center;
+  font-weight: bold;
+  color: #fff;
+  background: rgba(0, 0, 0, 0.3);
+  padding: 6px;
+  border-radius: 8px;
+}
+
+.footer {
+  margin-top: auto;
+  padding: 8px 16px 10px;
+  font-size: 0.78rem;
+  color: var(--muted);
+  text-align: center;
+}
+
+@media (min-width: 900px) {
+  .camera-output-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .settings-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
