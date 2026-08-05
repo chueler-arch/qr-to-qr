@@ -79,7 +79,7 @@
 
       <section id="barcodeSection" class="barcode-section is-empty" tabindex="0" role="button" aria-label="バーコード表示">
         <div class="barcode-topline">
-          <div class="section-label dark">OUTPUT</div>
+          <div class="barcode-top-left"><div class="section-label dark">OUTPUT</div><button id="addModeBtn" class="add-mode-button" type="button" hidden>追加モード</button></div>
           <button id="openBarcodeSettingsBtn" class="icon-button section-settings dark-button" type="button" aria-label="バーコード設定">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.38.34.72.65.98.3.26.7.4 1.1.42H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
           </button>
@@ -96,6 +96,12 @@
           <p id="barcodeWarning" class="barcode-warning" hidden></p>
           <div id="outputPager" class="output-pager" aria-label="出力値のページ"></div>
         </div>
+        <div id="addModeStage" class="add-mode-stage" hidden>
+          <p class="add-mode-guide">追加する列を左右にスワイプし、カメラでコードを読み取ってください</p>
+          <table class="add-data-table"><thead><tr><th id="addKeyTitle">A列</th><th id="addValueTitle">B列</th></tr></thead><tbody><tr><td id="addKeyValue"></td><td id="addColumnValue" class="is-blank">空白</td></tr></tbody></table>
+          <div id="addColumnPager" class="output-pager" aria-label="追加先の列"></div>
+        </div>
+        <button id="overwriteHoldBtn" class="overwrite-hold-button" type="button" hidden>押している間だけ上書き</button>
       </section>
 
       <footer class="app-footer">

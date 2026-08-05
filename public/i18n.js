@@ -47,6 +47,8 @@
     '列ごとの設定':'Per-column Settings','自動で設定する':'Auto Detect','インポート値を検査して適切な形式を提案します。自動設定後も変更できます。':'Imported values are inspected to suggest a suitable format. You can change it afterward.',
     '最大文字数':'Maximum length','使用できる文字':'Allowed characters','大文字・小文字':'Letter case',
     '出力画面右上の設定ボタンから、QR、CODE128 Auto／Set A／Set B／Set C、CODE39、EAN-13、ITFと描画サイズを選択できます。全列共通または列ごとの設定を選び、インポート値からの自動設定後に手動で変更できます。形式の制限により値が変換される場合は、出力画面に警告が表示されます。':'Choose QR, CODE128 Auto/Set A/Set B/Set C, CODE39, EAN-13, ITF, and render size. Use one format for all columns or configure each column, with automatic detection followed by manual adjustment. A warning appears if format restrictions transform a value.'
+    ,'追加モード':'Add Mode','追加モード終了':'Exit Add Mode','追加する列を左右にスワイプし、カメラでコードを読み取ってください':'Swipe to choose a column, then scan a code with the camera','空白':'Blank','押している間だけ上書き':'Hold to Overwrite',
+    '既存のキーを読み取ると、出力画面左上に追加モードが表示されます。追加モードでは左右のスワイプで列を選び、次にカメラで読み取った文字列を空白セルへ追加できます。入力済みセルを変更する場合は、左下の上書きボタンを押したまま読み取ってください。変更はブラウザ上のデータにのみ反映され、元のファイルやSpreadsheetには書き戻されません。':'After scanning an existing key, Add Mode appears at the upper left of the output. Swipe to select a column, then scan a value into a blank cell. To replace an existing value, hold the overwrite button at the lower left while scanning. Changes affect only the in-browser data and are not written back to the source file or Spreadsheet.'
   };
   const text = (ja, en) => (getLanguage() === 'en' ? en : ja);
   function getLanguage() { return localStorage.getItem(STORAGE_KEY) === 'en' ? 'en' : 'ja'; }

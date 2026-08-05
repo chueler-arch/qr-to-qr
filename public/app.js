@@ -1,7 +1,7 @@
 const state = {
   entries: [], columns: [], rawRows: [], outputType: 'CODE128', outputMode: 'uniform', columnFormats: {}, outputSize: 240, zoom: 1, focus: 0.5,
   facingMode: 'environment', stream: null, track: null, scanTimer: null,
-  lastCode: '', currentOutputs: [], outputIndex: 0, cameraStarting: false, swipeStartX: null,
+  lastCode: '', currentOutputs: [], outputIndex: 0, currentEntry: null, keyTitle: 'A列', addMode: false, addColumnIndex: 0, overwriteHeld: false, cameraStarting: false, swipeStartX: null,
 };
 
 const byId = (id) => document.getElementById(id);
@@ -12,6 +12,7 @@ const dom = {
   switchCameraBtn: byId('switchCameraBtn'), barcodeSection: byId('barcodeSection'), emptyState: byId('emptyState'),
   outputStage: byId('outputStage'), barcodeCanvas: byId('barcodeCanvas'), valueText: byId('valueText'),
   outputTitle: byId('outputTitle'), outputPager: byId('outputPager'), barcodeWarning: byId('barcodeWarning'),
+  addModeBtn: byId('addModeBtn'), addModeStage: byId('addModeStage'), addKeyTitle: byId('addKeyTitle'), addValueTitle: byId('addValueTitle'), addKeyValue: byId('addKeyValue'), addColumnValue: byId('addColumnValue'), addColumnPager: byId('addColumnPager'), overwriteHoldBtn: byId('overwriteHoldBtn'),
   importModal: byId('importModal'), barcodeSettingsModal: byId('barcodeSettingsModal'), fileInput: byId('fileInput'),
   googleSheetUrl: byId('googleSheetUrl'), loadGoogleSheetBtn: byId('loadGoogleSheetBtn'), statusText: byId('statusText'),
   outputType: byId('outputType'), outputSize: byId('outputSize'), formatOptions: byId('formatOptions'), formatHelp: byId('formatHelp'),
@@ -81,16 +82,18 @@ function updateEntries(rows) {
   const normalizedRows = rows.map((row) => row.map((cell) => String(cell ?? '').trim()));
   const titles = normalizedRows[0]?.slice(1) || [];
   state.rawRows = normalizedRows;
+  state.keyTitle = normalizedRows[0]?.[0] || 'A列';
   const columnCount = Math.max(0, ...normalizedRows.map((row) => row.length - 1));
   state.columns = Array.from({ length: columnCount }, (_, index) => ({ column: columnName(index + 1), title: titles[index] || `${columnName(index + 1)}列` }));
-  state.entries = normalizedRows.map((row) => ({
+  state.entries = normalizedRows.map((row, rowIndex) => ({
     key: row[0],
+    rowIndex,
     outputs: row.slice(1).map((value, index) => ({
       value,
       title: titles[index] || `${columnName(index + 1)}列`,
       column: columnName(index + 1),
     })).filter((output) => output.value),
-  })).filter((row) => row.key && row.outputs.length);
+  })).filter((row) => row.key);
   state.columnFormats = {};
   state.columns.forEach(({ column }, index) => { state.columnFormats[column] = detectFormat(normalizedRows.slice(1).map((row) => row[index + 1]).filter(Boolean)); });
   renderColumnFormatSettings();
@@ -100,6 +103,7 @@ function updateEntries(rows) {
     return false;
   }
   state.lastCode = '';
+  state.currentEntry = null; state.addMode = false; state.overwriteHeld = false; dom.addModeBtn.hidden = true; dom.addModeStage.hidden = true; dom.overwriteHoldBtn.hidden = true;
   state.currentOutputs = [];
   state.outputIndex = 0;
   dom.barcodeSection.classList.remove('is-empty');
@@ -267,6 +271,73 @@ function moveOutputPage(direction) {
   renderOutputPage();
 }
 
+function ensureWritableColumn() {
+  if (!state.currentEntry) return;
+  const row = state.rawRows[state.currentEntry.rowIndex];
+  let blankIndex = state.columns.findIndex((_, index) => !String(row[index + 1] ?? '').trim());
+  if (blankIndex < 0) {
+    blankIndex = state.columns.length;
+    const column = columnName(blankIndex + 1);
+    state.columns.push({ column, title: '' });
+    state.rawRows.forEach((dataRow) => { while (dataRow.length <= blankIndex + 1) dataRow.push(''); });
+    state.columnFormats[column] = 'QR';
+    renderColumnFormatSettings();
+  }
+  state.addColumnIndex = blankIndex;
+}
+
+function currentAddCell() {
+  if (!state.currentEntry) return '';
+  return String(state.rawRows[state.currentEntry.rowIndex]?.[state.addColumnIndex + 1] ?? '');
+}
+
+function renderAddMode() {
+  if (!state.currentEntry) return;
+  const column = state.columns[state.addColumnIndex];
+  const value = currentAddCell();
+  dom.addKeyTitle.textContent = state.keyTitle || 'A列';
+  dom.addValueTitle.textContent = column.title || `${column.column}列`;
+  dom.addKeyValue.textContent = state.currentEntry.key;
+  dom.addColumnValue.textContent = value || tr('空白', 'Blank');
+  dom.addColumnValue.classList.toggle('is-blank', !value);
+  dom.overwriteHoldBtn.hidden = !value;
+  dom.addColumnPager.replaceChildren(...state.columns.map((_, index) => { const dot = document.createElement('span'); dot.classList.toggle('is-active', index === state.addColumnIndex); return dot; }));
+}
+
+function moveAddColumn(direction) {
+  if (!state.columns.length) return;
+  state.addColumnIndex = (state.addColumnIndex + direction + state.columns.length) % state.columns.length;
+  state.overwriteHeld = false; dom.overwriteHoldBtn.classList.remove('is-held'); renderAddMode();
+}
+
+function setAddMode(enabled) {
+  if (!state.currentEntry) return;
+  state.addMode = enabled; state.overwriteHeld = false; dom.overwriteHoldBtn.classList.remove('is-held');
+  if (enabled) { ensureWritableColumn(); state.lastCode = state.currentEntry.key; }
+  dom.addModeBtn.classList.toggle('is-active', enabled); dom.addModeBtn.textContent = enabled ? tr('追加モード終了', 'Exit Add Mode') : tr('追加モード', 'Add Mode');
+  dom.outputStage.hidden = enabled; dom.addModeStage.hidden = !enabled; dom.overwriteHoldBtn.hidden = true;
+  if (enabled) renderAddMode(); else renderOutputPage();
+}
+
+function addScannedValue(rawValue) {
+  if (!state.currentEntry || rawValue === state.currentEntry.key) return;
+  const existing = currentAddCell();
+  if (existing && !state.overwriteHeld) {
+    dom.scanResult.textContent = tr('上書きするには、上書きボタンを押したまま読み取ってください', 'Hold the overwrite button while scanning to replace this value');
+    state.lastCode = '';
+    return;
+  }
+  const row = state.rawRows[state.currentEntry.rowIndex]; row[state.addColumnIndex + 1] = rawValue;
+  const meta = state.columns[state.addColumnIndex];
+  const output = { value: rawValue, title: meta.title || `${meta.column}列`, column: meta.column };
+  const existingIndex = state.currentEntry.outputs.findIndex((item) => item.column === meta.column);
+  if (existingIndex >= 0) state.currentEntry.outputs[existingIndex] = output; else state.currentEntry.outputs.push(output);
+  state.currentEntry.outputs.sort((a, b) => state.columns.findIndex((item) => item.column === a.column) - state.columns.findIndex((item) => item.column === b.column));
+  state.currentOutputs = state.currentEntry.outputs; state.columnFormats[meta.column] = detectFormat(state.rawRows.slice(1).map((dataRow) => dataRow[state.addColumnIndex + 1]).filter(Boolean));
+  saveSettings(); renderColumnFormatSettings(); renderAddMode();
+  dom.scanResult.textContent = tr(`${meta.column}列に「${rawValue}」を追加しました`, `Added “${rawValue}” to column ${meta.column}`);
+}
+
 function stopCamera() {
   if (state.scanTimer) window.clearInterval(state.scanTimer);
   state.scanTimer = null;
@@ -348,9 +419,12 @@ async function scanFrame() {
     }
     if (!rawValue || rawValue === state.lastCode) return;
     state.lastCode = rawValue;
+    if (state.addMode) { addScannedValue(rawValue); return; }
     const match = state.entries.find((entry) => entry.key === rawValue);
     dom.scanResult.textContent = match ? tr(`読取完了：${rawValue}`, `Scanned: ${rawValue}`) : tr(`読取：${rawValue}（対応データなし）`, `Scanned: ${rawValue} (no matching data)`);
     if (!state.entries.length) return;
+    state.currentEntry = match || null; dom.addModeBtn.hidden = !match;
+    if (!match && state.addMode) setAddMode(false);
     state.currentOutputs = match?.outputs || [];
     state.outputIndex = 0;
     renderOutputPage();
@@ -366,6 +440,7 @@ function initializeEvents() {
   dom.openImportBtn.addEventListener('click', () => openLayer(dom.importModal));
   dom.openCameraSettingsBtn.addEventListener('click', () => openLayer(dom.cameraSettings));
   dom.openBarcodeSettingsBtn.addEventListener('click', (event) => { event.stopPropagation(); openLayer(dom.barcodeSettingsModal); });
+  dom.addModeBtn.addEventListener('click', (event) => { event.stopPropagation(); setAddMode(!state.addMode); });
   dom.barcodeSection.addEventListener('click', () => { if (!state.entries.length) openLayer(dom.importModal); });
   dom.barcodeSection.addEventListener('keydown', (event) => { if (!state.entries.length && (event.key === 'Enter' || event.key === ' ')) openLayer(dom.importModal); });
   document.querySelectorAll('[data-close]').forEach((button) => button.addEventListener('click', () => closeLayer(byId(button.dataset.close))));
@@ -373,6 +448,8 @@ function initializeEvents() {
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') document.querySelectorAll('.is-open').forEach(closeLayer); });
   document.addEventListener('qrtoqr-language-change', () => {
     renderFormatOptions(); renderColumnFormatSettings(); syncOutputModeUI();
+    dom.addModeBtn.textContent = state.addMode ? tr('追加モード終了', 'Exit Add Mode') : tr('追加モード', 'Add Mode');
+    if (state.addMode) renderAddMode();
     if (state.currentOutputs.length) renderOutputPage();
     else if (state.entries.length) clearOutput(tr('コードをスキャンしてください', 'Scan a code'));
   });
@@ -395,6 +472,12 @@ function initializeEvents() {
     if (Math.abs(distance) >= 40) moveOutputPage(distance < 0 ? 1 : -1);
   });
   dom.outputStage.addEventListener('pointercancel', () => { state.swipeStartX = null; });
+  dom.addModeStage.addEventListener('pointerdown', (event) => { state.swipeStartX = event.clientX; });
+  dom.addModeStage.addEventListener('pointerup', (event) => { if (state.swipeStartX === null) return; const distance = event.clientX - state.swipeStartX; state.swipeStartX = null; if (Math.abs(distance) >= 40) moveAddColumn(distance < 0 ? 1 : -1); });
+  dom.addModeStage.addEventListener('pointercancel', () => { state.swipeStartX = null; });
+  const releaseOverwrite = () => { state.overwriteHeld = false; dom.overwriteHoldBtn.classList.remove('is-held'); };
+  dom.overwriteHoldBtn.addEventListener('pointerdown', (event) => { event.preventDefault(); state.overwriteHeld = true; dom.overwriteHoldBtn.classList.add('is-held'); dom.overwriteHoldBtn.setPointerCapture?.(event.pointerId); });
+  dom.overwriteHoldBtn.addEventListener('pointerup', releaseOverwrite); dom.overwriteHoldBtn.addEventListener('pointercancel', releaseOverwrite); dom.overwriteHoldBtn.addEventListener('lostpointercapture', releaseOverwrite); window.addEventListener('blur', releaseOverwrite);
   dom.zoomControl.addEventListener('input', () => { state.zoom = Number(dom.zoomControl.value); dom.zoomValue.textContent = `${state.zoom.toFixed(1)}×`; saveSettings(); applyCameraControl('zoom', state.zoom); });
   dom.focusControl.addEventListener('input', () => { state.focus = Number(dom.focusControl.value); dom.focusValue.textContent = state.focus.toFixed(2); saveSettings(); applyCameraControl('focusDistance', state.focus); });
   dom.switchCameraBtn.addEventListener('click', async () => { state.facingMode = state.facingMode === 'environment' ? 'user' : 'environment'; await startCamera(); });
