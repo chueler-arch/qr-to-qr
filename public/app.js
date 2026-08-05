@@ -13,17 +13,20 @@ const dom = {
   switchCameraBtn: byId('switchCameraBtn'), barcodeSection: byId('barcodeSection'), emptyState: byId('emptyState'),
   outputStage: byId('outputStage'), barcodeCanvas: byId('barcodeCanvas'), valueText: byId('valueText'),
   outputTitle: byId('outputTitle'), outputPager: byId('outputPager'), barcodeWarning: byId('barcodeWarning'),
-  addModeBtn: byId('addModeBtn'), exitAddModeBtn: byId('exitAddModeBtn'), addModeStage: byId('addModeStage'), addKeyTitle: byId('addKeyTitle'), addValueTitle: byId('addValueTitle'), addKeyValue: byId('addKeyValue'), addColumnValue: byId('addColumnValue'), addColumnPager: byId('addColumnPager'), overwriteHoldBtn: byId('overwriteHoldBtn'),
+  addModeBtn: byId('addModeBtn'), exitAddModeBtn: byId('exitAddModeBtn'), addModeStage: byId('addModeStage'), addKeyTitle: byId('addKeyTitle'), addValueTitle: byId('addValueTitle'), addKeyValue: byId('addKeyValue'), addColumnValue: byId('addColumnValue'), addColumnPager: byId('addColumnPager'), capturePhotoBtn: byId('capturePhotoBtn'), overwriteHoldBtn: byId('overwriteHoldBtn'),
   importModal: byId('importModal'), barcodeSettingsModal: byId('barcodeSettingsModal'), fileInput: byId('fileInput'),
   googleSheetUrl: byId('googleSheetUrl'), loadGoogleSheetBtn: byId('loadGoogleSheetBtn'), statusText: byId('statusText'),
   outputType: byId('outputType'), outputSize: byId('outputSize'), formatOptions: byId('formatOptions'), formatHelp: byId('formatHelp'),
   uniformFormatSettings: byId('uniformFormatSettings'), columnFormatSettings: byId('columnFormatSettings'), columnFormatList: byId('columnFormatList'), autoDetectFormatsBtn: byId('autoDetectFormatsBtn'), openImportBtn: byId('openImportBtn'),
   barcodeSettingsPanel: byId('barcodeSettingsPanel'), inputSettingsPanel: byId('inputSettingsPanel'), enableAddMode: byId('enableAddMode'), enableBarcodeInput: byId('enableBarcodeInput'), enableOverwrite: byId('enableOverwrite'), enableCameraCapture: byId('enableCameraCapture'),
+  dataTransferBtnLabel: byId('dataTransferBtnLabel'), exportTabBtn: byId('exportTabBtn'), importPanel: byId('importPanel'), exportPanel: byId('exportPanel'), exportCsvBtn: byId('exportCsvBtn'), appsScriptUrl: byId('appsScriptUrl'), appsScriptToken: byId('appsScriptToken'), overwriteSheetBtn: byId('overwriteSheetBtn'), exportStatus: byId('exportStatus'),
   openCameraSettingsBtn: byId('openCameraSettingsBtn'), openBarcodeSettingsBtn: byId('openBarcodeSettingsBtn'),
 };
 
 const STORAGE_KEY = 'qrtoqr-settings';
 const SHEET_URL_STORAGE_KEY = 'qrtoqr-google-sheet-url';
+const APPS_SCRIPT_URL_STORAGE_KEY = 'qrtoqr-apps-script-url';
+const APPS_SCRIPT_TOKEN_STORAGE_KEY = 'qrtoqr-apps-script-token';
 const tr = (ja, en) => window.QRtoQRI18n?.text(ja, en) || ja;
 const FORMAT_INFO = {
   CODE128:{name:'CODE128 Auto',max:'実用上80文字程度',maxEn:'About 80 characters in this app',chars:'ASCII文字。内容に応じてA/B/Cを自動切替',charsEn:'ASCII; automatically switches between A/B/C',case:'大文字・小文字を保持',caseEn:'Preserved'},
@@ -113,6 +116,7 @@ function updateEntries(rows) {
   dom.barcodeSection.removeAttribute('role');
   dom.emptyState.hidden = true;
   dom.outputStage.hidden = false;
+  dom.dataTransferBtnLabel.textContent = tr('データエクスポート', 'Export Data'); dom.exportTabBtn.disabled = false;
   clearOutput(tr('コードをスキャンしてください', 'Scan a code'));
   setImportStatus(tr(`${state.entries.length}件のデータをインポートしました。`, `${state.entries.length} records imported.`));
   window.setTimeout(() => closeLayer(dom.importModal), 450);
@@ -277,16 +281,17 @@ function moveOutputPage(direction) {
 function ensureWritableColumn() {
   if (!state.currentEntry) return;
   const row = state.rawRows[state.currentEntry.rowIndex];
-  let blankIndex = state.columns.findIndex((_, index) => !String(row[index + 1] ?? '').trim());
-  if (blankIndex < 0) {
-    blankIndex = state.columns.length;
+  const blankIndices = state.columns.map((_, index) => index).filter((index) => !String(row[index + 1] ?? '').trim());
+  while (blankIndices.length < 10) {
+    const blankIndex = state.columns.length;
     const column = columnName(blankIndex + 1);
     state.columns.push({ column, title: '' });
     state.rawRows.forEach((dataRow) => { while (dataRow.length <= blankIndex + 1) dataRow.push(''); });
     state.columnFormats[column] = 'QR';
-    renderColumnFormatSettings();
+    blankIndices.push(blankIndex);
   }
-  state.addColumnIndex = blankIndex;
+  renderColumnFormatSettings();
+  state.addColumnIndex = blankIndices[0];
 }
 
 function currentAddCell() {
@@ -310,9 +315,16 @@ function renderAddMode() {
 
 function moveAddColumn(direction) {
   if (!state.columns.length) return;
-  state.addColumnIndex = (state.addColumnIndex + direction + state.columns.length) % state.columns.length;
-  state.overwriteHeld = false; dom.overwriteHoldBtn.classList.remove('is-held'); renderAddMode();
-  document.querySelector('.add-data-table')?.animate([{ transform:`translateX(${direction > 0 ? 48 : -48}px)`, opacity:.35 },{ transform:'translateX(0)', opacity:1 }], { duration:220, easing:'cubic-bezier(.2,.8,.2,1)' });
+  const table = document.querySelector('.add-data-table');
+  const distance = direction > 0 ? -90 : 90;
+  const changeColumn = () => {
+    state.addColumnIndex = (state.addColumnIndex + direction + state.columns.length) % state.columns.length;
+    state.overwriteHeld = false; dom.overwriteHoldBtn.classList.remove('is-held'); renderAddMode();
+    table?.animate([{ transform:`translateX(${-distance}px)`, opacity:.15 },{ transform:'translateX(0)', opacity:1 }], { duration:190, easing:'cubic-bezier(.2,.8,.2,1)' });
+  };
+  if (!table?.animate) { changeColumn(); return; }
+  const animation = table.animate([{ transform:'translateX(0)', opacity:1 },{ transform:`translateX(${distance}px)`, opacity:.15 }], { duration:150, easing:'ease-in' });
+  animation.finished.then(changeColumn).catch(changeColumn);
 }
 
 function setAddMode(enabled) {
@@ -325,11 +337,13 @@ function setAddMode(enabled) {
 
 function updateAddActionButton() {
   const canEnter = Boolean(state.currentEntry && state.inputSettings.addMode);
-  const capture = Boolean(state.addMode && !currentAddCell() && state.inputSettings.cameraCapture);
-  dom.addModeBtn.hidden = state.addMode ? !capture : !canEnter;
-  dom.addModeBtn.classList.toggle('is-capture', capture);
-  dom.addModeBtn.textContent = capture ? '' : '＋';
-  dom.addModeBtn.setAttribute('aria-label', capture ? tr('カメラ撮影', 'Capture Photo') : tr('追加モード', 'Add Mode'));
+  dom.addModeBtn.hidden = !canEnter;
+  dom.addModeBtn.classList.remove('is-capture');
+  dom.addModeBtn.textContent = state.addMode ? '▦' : '＋';
+  dom.addModeBtn.setAttribute('aria-label', state.addMode ? tr('バーコード表示', 'Barcode Display') : tr('データ入力', 'Data Input'));
+  const blank = !currentAddCell();
+  dom.capturePhotoBtn.hidden = !(state.addMode && blank && state.inputSettings.cameraCapture);
+  dom.overwriteHoldBtn.hidden = !(state.addMode && !blank && state.inputSettings.overwrite);
 }
 
 function applyInputSettings() {
@@ -342,10 +356,12 @@ function applyInputSettings() {
 
 async function captureCameraImage() {
   if (!state.addMode || currentAddCell() || !state.inputSettings.cameraCapture || dom.video.readyState < 2) return;
-  const suggested = `QRtoQR_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.png`;
-  const entered = window.prompt(tr('保存する画像のファイル名を入力してください', 'Enter a filename for the image'), suggested);
-  if (!entered) return;
-  const filename = entered.toLowerCase().endsWith('.png') ? entered : `${entered}.png`;
+  const now = new Date();
+  const pad = (value, length = 2) => String(value).padStart(length, '0');
+  const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}${pad(now.getMilliseconds(), 3)}`;
+  let safeKey = String(state.currentEntry.key).replace(/[<>:"/\\|?*\x00-\x1F]/g, '-').replace(/[. ]+$/g, '-').trim() || 'key';
+  if (/^(con|prn|aux|nul|com[1-9]|lpt[1-9])$/i.test(safeKey)) safeKey = `-${safeKey}`;
+  const filename = `${safeKey}_${timestamp}.png`;
   const canvas = document.createElement('canvas'); canvas.width = dom.video.videoWidth; canvas.height = dom.video.videoHeight;
   canvas.getContext('2d').drawImage(dom.video, 0, 0, canvas.width, canvas.height);
   const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
@@ -369,6 +385,7 @@ function addScannedValue(rawValue) {
   if (existingIndex >= 0) state.currentEntry.outputs[existingIndex] = output; else state.currentEntry.outputs.push(output);
   state.currentEntry.outputs.sort((a, b) => state.columns.findIndex((item) => item.column === a.column) - state.columns.findIndex((item) => item.column === b.column));
   state.currentOutputs = state.currentEntry.outputs; state.columnFormats[meta.column] = detectFormat(state.rawRows.slice(1).map((dataRow) => dataRow[state.addColumnIndex + 1]).filter(Boolean));
+  const selectedColumn = state.addColumnIndex; ensureWritableColumn(); state.addColumnIndex = selectedColumn;
   saveSettings(); renderColumnFormatSettings(); renderAddMode();
   dom.scanResult.textContent = tr(`${meta.column}列に「${rawValue}」を追加しました`, `Added “${rawValue}” to column ${meta.column}`);
 }
@@ -475,11 +492,48 @@ function syncOutputSettings() {
   if (state.currentOutputs.length) renderOutputPage();
 }
 
+function setTransferTab(tab) {
+  if (tab === 'export' && dom.exportTabBtn.disabled) tab = 'import';
+  document.querySelectorAll('[data-transfer-tab]').forEach((button) => button.classList.toggle('is-active', button.dataset.transferTab === tab));
+  dom.importPanel.hidden = tab !== 'import';
+  dom.exportPanel.hidden = tab !== 'export';
+}
+
+function timestampDigits() {
+  const now = new Date(); const pad = (value, length = 2) => String(value).padStart(length, '0');
+  return `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}${pad(now.getMilliseconds(), 3)}`;
+}
+
+function exportCsv() {
+  if (!state.rawRows.length) return;
+  const escape = (value) => { const text = String(value ?? ''); return /[",\r\n]/.test(text) ? `"${text.replace(/"/g, '""')}"` : text; };
+  const csv = `\uFEFF${state.rawRows.map((row) => row.map(escape).join(',')).join('\r\n')}`;
+  const url = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+  const link = document.createElement('a'); link.href = url; link.download = `QRtoQR_${timestampDigits()}.csv`; link.click();
+  window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
+async function overwriteSpreadsheet() {
+  const endpoint = dom.appsScriptUrl.value.trim(); const token = dom.appsScriptToken.value;
+  const spreadsheetUrl = dom.googleSheetUrl.value.trim();
+  if (!endpoint || !token || !spreadsheetUrl) { dom.exportStatus.textContent = tr('WebアプリURL、共有トークン、Spreadsheet URLを入力してください。', 'Enter the web app URL, shared token, and Spreadsheet URL.'); return; }
+  dom.overwriteSheetBtn.disabled = true; dom.exportStatus.textContent = tr('Spreadsheetへ書き込んでいます…', 'Writing to Spreadsheet…');
+  try {
+    const response = await fetch(endpoint, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=utf-8' }, body:JSON.stringify({ token, spreadsheetUrl, values:state.rawRows }) });
+    const result = await response.json();
+    if (!response.ok || !result.ok) throw new Error(result.error || `HTTP ${response.status}`);
+    dom.exportStatus.textContent = tr(`${result.rows}行を上書きしました。`, `Overwrote ${result.rows} rows.`);
+  } catch (error) {
+    console.error(error); dom.exportStatus.textContent = tr('上書きできませんでした。Apps ScriptのURL、トークン、権限を確認してください。', 'Overwrite failed. Check the Apps Script URL, token, and permissions.');
+  } finally { dom.overwriteSheetBtn.disabled = false; }
+}
+
 function initializeEvents() {
-  dom.openImportBtn.addEventListener('click', () => openLayer(dom.importModal));
+  dom.openImportBtn.addEventListener('click', () => { setTransferTab(state.entries.length ? 'export' : 'import'); openLayer(dom.importModal); });
   dom.openCameraSettingsBtn.addEventListener('click', () => openLayer(dom.cameraSettings));
   dom.openBarcodeSettingsBtn.addEventListener('click', (event) => { event.stopPropagation(); openLayer(dom.barcodeSettingsModal); });
-  dom.addModeBtn.addEventListener('click', async (event) => { event.stopPropagation(); if (dom.addModeBtn.classList.contains('is-capture')) await captureCameraImage(); else setAddMode(true); });
+  dom.addModeBtn.addEventListener('click', (event) => { event.stopPropagation(); setAddMode(!state.addMode); });
+  dom.capturePhotoBtn.addEventListener('click', captureCameraImage);
   dom.exitAddModeBtn.addEventListener('click', () => setAddMode(false));
   document.querySelectorAll('[data-settings-tab]').forEach((button) => button.addEventListener('click', () => { const tab = button.dataset.settingsTab; document.querySelectorAll('[data-settings-tab]').forEach((item) => item.classList.toggle('is-active', item === button)); dom.barcodeSettingsPanel.hidden = tab !== 'barcode'; dom.inputSettingsPanel.hidden = tab !== 'input'; }));
   dom.barcodeSection.addEventListener('click', () => { if (!state.entries.length) openLayer(dom.importModal); });
@@ -488,6 +542,7 @@ function initializeEvents() {
   document.querySelectorAll('.modal-layer').forEach((layer) => layer.addEventListener('click', (event) => { if (event.target === layer) closeLayer(layer); }));
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') document.querySelectorAll('.is-open').forEach(closeLayer); });
   document.addEventListener('qrtoqr-language-change', () => {
+    dom.dataTransferBtnLabel.textContent = state.entries.length ? tr('データエクスポート', 'Export Data') : tr('データインポート', 'Import Data');
     renderFormatOptions(); renderColumnFormatSettings(); syncOutputModeUI();
     applyInputSettings();
     if (state.currentOutputs.length) renderOutputPage();
@@ -495,9 +550,14 @@ function initializeEvents() {
   });
   dom.fileInput.addEventListener('change', (event) => importFromFile(event.target.files[0]));
   dom.loadGoogleSheetBtn.addEventListener('click', importFromGoogleSheet);
+  document.querySelectorAll('[data-transfer-tab]').forEach((button) => button.addEventListener('click', () => setTransferTab(button.dataset.transferTab)));
+  dom.exportCsvBtn.addEventListener('click', exportCsv);
+  dom.overwriteSheetBtn.addEventListener('click', overwriteSpreadsheet);
   dom.googleSheetUrl.addEventListener('input', () => {
     localStorage.setItem(SHEET_URL_STORAGE_KEY, dom.googleSheetUrl.value.trim());
   });
+  dom.appsScriptUrl.addEventListener('input', () => localStorage.setItem(APPS_SCRIPT_URL_STORAGE_KEY, dom.appsScriptUrl.value.trim()));
+  dom.appsScriptToken.addEventListener('input', () => localStorage.setItem(APPS_SCRIPT_TOKEN_STORAGE_KEY, dom.appsScriptToken.value));
   dom.outputType.addEventListener('change', syncOutputSettings); dom.outputSize.addEventListener('change', syncOutputSettings);
   document.querySelectorAll('input[name="outputMode"]').forEach((radio) => radio.addEventListener('change', () => { state.outputMode = radio.value; syncOutputModeUI(); saveSettings(); if (state.currentOutputs.length) renderOutputPage(); }));
   dom.autoDetectFormatsBtn.addEventListener('click', () => {
@@ -529,6 +589,8 @@ function initializeEvents() {
 function init() {
   loadSettings();
   dom.googleSheetUrl.value = localStorage.getItem(SHEET_URL_STORAGE_KEY) || '';
+  dom.appsScriptUrl.value = localStorage.getItem(APPS_SCRIPT_URL_STORAGE_KEY) || '';
+  dom.appsScriptToken.value = localStorage.getItem(APPS_SCRIPT_TOKEN_STORAGE_KEY) || '';
   dom.outputType.value = state.outputType; dom.outputSize.value = String(state.outputSize);
   renderFormatOptions(); renderColumnFormatSettings(); syncOutputModeUI();
   applyInputSettings();
