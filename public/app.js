@@ -20,6 +20,7 @@ const dom = {
 
 const STORAGE_KEY = 'qrtoqr-settings';
 const SHEET_URL_STORAGE_KEY = 'qrtoqr-google-sheet-url';
+const tr = (ja, en) => window.QRtoQRI18n?.text(ja, en) || ja;
 
 function loadSettings() {
   try {
@@ -75,7 +76,7 @@ function updateEntries(rows) {
     })).filter((output) => output.value),
   })).filter((row) => row.key && row.outputs.length);
   if (!state.entries.length) {
-    setImportStatus('有効なデータが見つかりませんでした。2列以上のデータを確認してください。', true);
+    setImportStatus(tr('有効なデータが見つかりませんでした。2列以上のデータを確認してください。', 'No valid data was found. Check that the data has at least two columns.'), true);
     return false;
   }
   state.lastCode = '';
@@ -85,8 +86,8 @@ function updateEntries(rows) {
   dom.barcodeSection.removeAttribute('role');
   dom.emptyState.hidden = true;
   dom.outputStage.hidden = false;
-  clearOutput('コードをスキャンしてください');
-  setImportStatus(`${state.entries.length}件のデータをインポートしました。`);
+  clearOutput(tr('コードをスキャンしてください', 'Scan a code'));
+  setImportStatus(tr(`${state.entries.length}件のデータをインポートしました。`, `${state.entries.length} records imported.`));
   window.setTimeout(() => closeLayer(dom.importModal), 450);
   return true;
 }
@@ -110,14 +111,14 @@ function parseCSV(text) {
 
 function buildGoogleExportUrl(url) {
   const match = url.match(/spreadsheets\/d\/([a-zA-Z0-9-_]+)/i);
-  if (!match) throw new Error('Google SpreadsheetのURLが正しくありません。');
+  if (!match) throw new Error(tr('Google SpreadsheetのURLが正しくありません。', 'The Google Spreadsheet URL is invalid.'));
   const gidMatch = url.match(/[?&]gid=([^&]+)/i);
   return `https://docs.google.com/spreadsheets/d/${match[1]}/export?format=csv${gidMatch ? `&gid=${encodeURIComponent(gidMatch[1])}` : ''}`;
 }
 
 async function importFromFile(file) {
   if (!file) return;
-  setImportStatus(`${file.name}を読み込んでいます…`);
+  setImportStatus(tr(`${file.name}を読み込んでいます…`, `Loading ${file.name}…`));
   try {
     const extension = file.name.split('.').pop()?.toLowerCase();
     if (extension === 'csv') updateEntries(parseCSV(await file.text()));
@@ -126,49 +127,49 @@ async function importFromFile(file) {
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
       updateEntries(rawRows.filter((row) => row.length >= 2));
-    } else setImportStatus('CSVまたはExcelファイルを選択してください。', true);
-  } catch (error) { setImportStatus(error.message || 'ファイルを読み込めませんでした。', true); }
+    } else setImportStatus(tr('CSVまたはExcelファイルを選択してください。', 'Choose a CSV or Excel file.'), true);
+  } catch (error) { setImportStatus(error.message || tr('ファイルを読み込めませんでした。', 'The file could not be loaded.'), true); }
   finally { dom.fileInput.value = ''; }
 }
 
 async function importFromGoogleSheet() {
   const url = dom.googleSheetUrl.value.trim();
-  if (!url) { setImportStatus('Google SpreadsheetのURLを入力してください。', true); return; }
-  setImportStatus('Spreadsheetを読み込んでいます…');
+  if (!url) { setImportStatus(tr('Google SpreadsheetのURLを入力してください。', 'Enter a Google Spreadsheet URL.'), true); return; }
+  setImportStatus(tr('Spreadsheetを読み込んでいます…', 'Loading Spreadsheet…'));
   try {
     const response = await fetch(buildGoogleExportUrl(url), { mode: 'cors' });
-    if (!response.ok) throw new Error('Spreadsheetを読み込めませんでした。公開設定を確認してください。');
+    if (!response.ok) throw new Error(tr('Spreadsheetを読み込めませんでした。公開設定を確認してください。', 'The Spreadsheet could not be loaded. Check its sharing settings.'));
     updateEntries(parseCSV(await response.text()));
-  } catch (error) { setImportStatus(error.message || 'Spreadsheetの読み込みに失敗しました。', true); }
+  } catch (error) { setImportStatus(error.message || tr('Spreadsheetの読み込みに失敗しました。', 'Failed to load the Spreadsheet.'), true); }
 }
 
 function clearOutput(message) {
   const context = dom.barcodeCanvas.getContext('2d');
   context.clearRect(0, 0, dom.barcodeCanvas.width, dom.barcodeCanvas.height);
-  dom.outputTitle.textContent = '出力';
+  dom.outputTitle.textContent = tr('出力', 'Output');
   dom.valueText.textContent = message;
   dom.outputPager.replaceChildren();
 }
 
 function renderBarcode(value) {
-  if (!value) { clearOutput('対応するデータがありません'); return; }
+  if (!value) { clearOutput(tr('対応するデータがありません', 'No matching data')); return; }
   const canvas = dom.barcodeCanvas;
   try {
     if (state.outputType === 'QR') {
       QRCode.toCanvas(canvas, value, { width: state.outputSize, margin: 2 }, (error) => {
-        if (error) clearOutput('QRコードを描画できませんでした');
+        if (error) clearOutput(tr('QRコードを描画できませんでした', 'Could not render the QR code'));
       });
     } else {
       JsBarcode(canvas, value, { format: state.outputType, displayValue: false, margin: 8, width: 2, height: Math.max(64, state.outputSize * .48) });
     }
     dom.valueText.textContent = value;
-  } catch { clearOutput(`${state.outputType}形式で描画できない値です`); }
+  } catch { clearOutput(tr(`${state.outputType}形式で描画できない値です`, `This value cannot be rendered as ${state.outputType}.`)); }
 }
 
 function renderOutputPage() {
   const output = state.currentOutputs[state.outputIndex];
-  if (!output) { clearOutput('対応するデータがありません'); return; }
-  dom.outputTitle.textContent = `${output.title} (${output.column}列)`;
+  if (!output) { clearOutput(tr('対応するデータがありません', 'No matching data')); return; }
+  dom.outputTitle.textContent = tr(`${output.title} (${output.column}列)`, `${output.title} (Column ${output.column})`);
   renderBarcode(output.value);
   dom.outputPager.replaceChildren(...state.currentOutputs.map((_, index) => {
     const dot = document.createElement('span');
@@ -209,19 +210,19 @@ function configureCameraControls() {
     state.focus = Math.min(capabilities.focusDistance.max, Math.max(capabilities.focusDistance.min, state.focus));
     dom.focusControl.value = state.focus;
     dom.focusValue.textContent = state.focus.toFixed(2);
-  } else { dom.focusControl.disabled = true; dom.focusValue.textContent = '自動'; }
+  } else { dom.focusControl.disabled = true; dom.focusValue.textContent = tr('自動', 'Auto'); }
   dom.zoomValue.textContent = `${state.zoom.toFixed(1)}×`;
 }
 
 async function startCamera() {
   if (state.cameraStarting) return;
   if (!navigator.mediaDevices?.getUserMedia) {
-    dom.cameraPlaceholder.querySelector('p').textContent = 'このブラウザはカメラに対応していません';
+    dom.cameraPlaceholder.querySelector('p').textContent = tr('このブラウザはカメラに対応していません', 'This browser does not support camera access');
     dom.retryCameraBtn.classList.remove('is-hidden'); return;
   }
   state.cameraStarting = true;
   dom.cameraPlaceholder.style.display = 'flex';
-  dom.cameraPlaceholder.querySelector('p').textContent = 'カメラを起動しています';
+  dom.cameraPlaceholder.querySelector('p').textContent = tr('カメラを起動しています', 'Starting camera');
   dom.retryCameraBtn.classList.add('is-hidden');
   stopCamera();
   try {
@@ -233,11 +234,11 @@ async function startCamera() {
     await dom.video.play();
     configureCameraControls();
     dom.cameraPlaceholder.style.display = 'none';
-    dom.scanResult.textContent = 'コードを枠内に合わせてください';
+    dom.scanResult.textContent = tr('コードを枠内に合わせてください', 'Align the code inside the frame');
     state.scanTimer = window.setInterval(scanFrame, 650);
   } catch (error) {
     console.error(error);
-    dom.cameraPlaceholder.querySelector('p').textContent = 'カメラの使用を許可してください';
+    dom.cameraPlaceholder.querySelector('p').textContent = tr('カメラの使用を許可してください', 'Allow camera access to continue');
     dom.retryCameraBtn.classList.remove('is-hidden');
   } finally { state.cameraStarting = false; }
 }
@@ -266,7 +267,7 @@ async function scanFrame() {
     if (!rawValue || rawValue === state.lastCode) return;
     state.lastCode = rawValue;
     const match = state.entries.find((entry) => entry.key === rawValue);
-    dom.scanResult.textContent = match ? `読取完了：${rawValue}` : `読取：${rawValue}（対応データなし）`;
+    dom.scanResult.textContent = match ? tr(`読取完了：${rawValue}`, `Scanned: ${rawValue}`) : tr(`読取：${rawValue}（対応データなし）`, `Scanned: ${rawValue} (no matching data)`);
     if (!state.entries.length) return;
     state.currentOutputs = match?.outputs || [];
     state.outputIndex = 0;
@@ -288,6 +289,10 @@ function initializeEvents() {
   document.querySelectorAll('[data-close]').forEach((button) => button.addEventListener('click', () => closeLayer(byId(button.dataset.close))));
   document.querySelectorAll('.modal-layer').forEach((layer) => layer.addEventListener('click', (event) => { if (event.target === layer) closeLayer(layer); }));
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') document.querySelectorAll('.is-open').forEach(closeLayer); });
+  document.addEventListener('qrtoqr-language-change', () => {
+    if (state.currentOutputs.length) renderOutputPage();
+    else if (state.entries.length) clearOutput(tr('コードをスキャンしてください', 'Scan a code'));
+  });
   dom.fileInput.addEventListener('change', (event) => importFromFile(event.target.files[0]));
   dom.loadGoogleSheetBtn.addEventListener('click', importFromGoogleSheet);
   dom.googleSheetUrl.addEventListener('input', () => {
@@ -316,7 +321,7 @@ function init() {
   dom.zoomControl.value = state.zoom; dom.focusControl.value = state.focus;
   dom.zoomValue.textContent = `${state.zoom.toFixed(1)}×`;
   initializeEvents();
-  if (!(window.JsBarcode && window.QRCode && window.jsQR && window.XLSX)) setImportStatus('必要なライブラリを読み込めませんでした。', true);
+  if (!(window.JsBarcode && window.QRCode && window.jsQR && window.XLSX)) setImportStatus(tr('必要なライブラリを読み込めませんでした。', 'Required libraries could not be loaded.'), true);
   startCamera();
 }
 
