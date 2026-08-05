@@ -1,7 +1,7 @@
 const state = {
   entries: [], outputType: 'CODE128', outputSize: 240, zoom: 1, focus: 0.5,
   facingMode: 'environment', stream: null, track: null, scanTimer: null,
-  lastCode: '', lastOutput: '', cameraStarting: false,
+  lastCode: '', currentOutputs: [], outputIndex: 0, cameraStarting: false, swipeStartX: null,
 };
 
 const byId = (id) => document.getElementById(id);
@@ -11,6 +11,7 @@ const dom = {
   focusControl: byId('focusControl'), zoomValue: byId('zoomValue'), focusValue: byId('focusValue'),
   switchCameraBtn: byId('switchCameraBtn'), barcodeSection: byId('barcodeSection'), emptyState: byId('emptyState'),
   outputStage: byId('outputStage'), barcodeCanvas: byId('barcodeCanvas'), valueText: byId('valueText'),
+  outputTitle: byId('outputTitle'), outputPager: byId('outputPager'),
   importModal: byId('importModal'), barcodeSettingsModal: byId('barcodeSettingsModal'), fileInput: byId('fileInput'),
   googleSheetUrl: byId('googleSheetUrl'), loadGoogleSheetBtn: byId('loadGoogleSheetBtn'), statusText: byId('statusText'),
   outputType: byId('outputType'), outputSize: byId('outputSize'), openImportBtn: byId('openImportBtn'),
@@ -50,18 +51,35 @@ function setImportStatus(message, isError = false) {
   dom.statusText.classList.toggle('is-error', isError);
 }
 
-function normalizeRow(key, value) {
-  return { key: String(key ?? '').trim(), value: String(value ?? '').trim() };
+function columnName(index) {
+  let number = index + 1;
+  let name = '';
+  while (number > 0) {
+    number -= 1;
+    name = String.fromCharCode(65 + (number % 26)) + name;
+    number = Math.floor(number / 26);
+  }
+  return name;
 }
 
 function updateEntries(rows) {
-  state.entries = rows.map((row) => normalizeRow(row.key, row.value)).filter((row) => row.key && row.value);
+  const normalizedRows = rows.map((row) => row.map((cell) => String(cell ?? '').trim()));
+  const titles = normalizedRows[0]?.slice(1) || [];
+  state.entries = normalizedRows.map((row) => ({
+    key: row[0],
+    outputs: row.slice(1).map((value, index) => ({
+      value,
+      title: titles[index] || `${columnName(index + 1)}列`,
+      column: columnName(index + 1),
+    })).filter((output) => output.value),
+  })).filter((row) => row.key && row.outputs.length);
   if (!state.entries.length) {
     setImportStatus('有効なデータが見つかりませんでした。2列以上のデータを確認してください。', true);
     return false;
   }
   state.lastCode = '';
-  state.lastOutput = '';
+  state.currentOutputs = [];
+  state.outputIndex = 0;
   dom.barcodeSection.classList.remove('is-empty');
   dom.barcodeSection.removeAttribute('role');
   dom.emptyState.hidden = true;
@@ -86,7 +104,7 @@ function parseCSV(text) {
     } else cell += char;
   }
   row.push(cell); if (row.some((value) => value.trim())) rows.push(row);
-  return rows.filter((values) => values.length >= 2).map((values) => ({ key: values[0], value: values.slice(1).join(',') }));
+  return rows.filter((values) => values.length >= 2);
 }
 
 function buildGoogleExportUrl(url) {
@@ -106,7 +124,7 @@ async function importFromFile(file) {
       const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
       const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-      updateEntries(rawRows.filter((row) => row.length >= 2).map((row) => ({ key: row[0], value: row.slice(1).join(',') })));
+      updateEntries(rawRows.filter((row) => row.length >= 2));
     } else setImportStatus('CSVまたはExcelファイルを選択してください。', true);
   } catch (error) { setImportStatus(error.message || 'ファイルを読み込めませんでした。', true); }
   finally { dom.fileInput.value = ''; }
@@ -126,7 +144,9 @@ async function importFromGoogleSheet() {
 function clearOutput(message) {
   const context = dom.barcodeCanvas.getContext('2d');
   context.clearRect(0, 0, dom.barcodeCanvas.width, dom.barcodeCanvas.height);
+  dom.outputTitle.textContent = '出力';
   dom.valueText.textContent = message;
+  dom.outputPager.replaceChildren();
 }
 
 function renderBarcode(value) {
@@ -142,6 +162,25 @@ function renderBarcode(value) {
     }
     dom.valueText.textContent = value;
   } catch { clearOutput(`${state.outputType}形式で描画できない値です`); }
+}
+
+function renderOutputPage() {
+  const output = state.currentOutputs[state.outputIndex];
+  if (!output) { clearOutput('対応するデータがありません'); return; }
+  dom.outputTitle.textContent = `${output.title} (${output.column}列)`;
+  renderBarcode(output.value);
+  dom.outputPager.replaceChildren(...state.currentOutputs.map((_, index) => {
+    const dot = document.createElement('span');
+    dot.classList.toggle('is-active', index === state.outputIndex);
+    dot.setAttribute('aria-label', `${index + 1}/${state.currentOutputs.length}`);
+    return dot;
+  }));
+}
+
+function moveOutputPage(direction) {
+  if (state.currentOutputs.length < 2) return;
+  state.outputIndex = (state.outputIndex + direction + state.currentOutputs.length) % state.currentOutputs.length;
+  renderOutputPage();
 }
 
 function stopCamera() {
@@ -228,14 +267,15 @@ async function scanFrame() {
     const match = state.entries.find((entry) => entry.key === rawValue);
     dom.scanResult.textContent = match ? `読取完了：${rawValue}` : `読取：${rawValue}（対応データなし）`;
     if (!state.entries.length) return;
-    state.lastOutput = match?.value || '';
-    renderBarcode(state.lastOutput);
+    state.currentOutputs = match?.outputs || [];
+    state.outputIndex = 0;
+    renderOutputPage();
   } catch (error) { console.error(error); }
 }
 
 function syncOutputSettings() {
   state.outputType = dom.outputType.value; state.outputSize = Number(dom.outputSize.value); saveSettings();
-  if (state.lastOutput) renderBarcode(state.lastOutput);
+  if (state.currentOutputs.length) renderOutputPage();
 }
 
 function initializeEvents() {
@@ -250,6 +290,14 @@ function initializeEvents() {
   dom.fileInput.addEventListener('change', (event) => importFromFile(event.target.files[0]));
   dom.loadGoogleSheetBtn.addEventListener('click', importFromGoogleSheet);
   dom.outputType.addEventListener('change', syncOutputSettings); dom.outputSize.addEventListener('change', syncOutputSettings);
+  dom.outputStage.addEventListener('pointerdown', (event) => { state.swipeStartX = event.clientX; });
+  dom.outputStage.addEventListener('pointerup', (event) => {
+    if (state.swipeStartX === null) return;
+    const distance = event.clientX - state.swipeStartX;
+    state.swipeStartX = null;
+    if (Math.abs(distance) >= 40) moveOutputPage(distance < 0 ? 1 : -1);
+  });
+  dom.outputStage.addEventListener('pointercancel', () => { state.swipeStartX = null; });
   dom.zoomControl.addEventListener('input', () => { state.zoom = Number(dom.zoomControl.value); dom.zoomValue.textContent = `${state.zoom.toFixed(1)}×`; saveSettings(); applyCameraControl('zoom', state.zoom); });
   dom.focusControl.addEventListener('input', () => { state.focus = Number(dom.focusControl.value); dom.focusValue.textContent = state.focus.toFixed(2); saveSettings(); applyCameraControl('focusDistance', state.focus); });
   dom.switchCameraBtn.addEventListener('click', async () => { state.facingMode = state.facingMode === 'environment' ? 'user' : 'environment'; await startCamera(); });

@@ -5,16 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#08111f" />
     <title>QRtoQR</title>
+    <link rel="icon" type="image/png" href="images/QRtoQR_icon.png" />
+    <link rel="apple-touch-icon" href="images/QRtoQR_icon.png" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <main class="app-shell">
       <header class="app-header">
         <div class="brand" aria-label="QRtoQR">
-          <svg class="app-icon" viewBox="0 0 40 40" aria-hidden="true">
-            <rect width="40" height="40" rx="11" fill="currentColor" />
-            <path d="M9 9h9v9H9zm3 3v3h3v-3zm10-3h9v9h-9zm3 3v3h3v-3zM9 22h9v9H9zm3 3v3h3v-3zm11-3h3v3h-3zm5 0h3v6h-3zm-6 5h4v4h-4zm6 3h3v1h-3z" fill="#07111f" />
-          </svg>
+          <img class="app-icon" src="images/QRtoQR_icon.png" alt="" />
           <span>QRtoQR</span>
         </div>
         <button id="openImportBtn" class="header-action" type="button">
@@ -75,8 +74,10 @@
           <span>タップしてインポート画面を開く</span>
         </div>
         <div id="outputStage" class="output-stage" hidden>
+          <p id="outputTitle" class="output-title">出力</p>
           <canvas id="barcodeCanvas"></canvas>
           <p id="valueText" class="value-text">コードをスキャンしてください</p>
+          <div id="outputPager" class="output-pager" aria-label="出力値のページ"></div>
         </div>
       </section>
 
@@ -108,7 +109,7 @@
         <label class="field-label" for="googleSheetUrl">公開Google Spreadsheet</label>
         <input id="googleSheetUrl" class="text-input" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/..." />
         <button id="loadGoogleSheetBtn" class="primary-button" type="button">Spreadsheetを読み込む</button>
-        <p id="statusText" class="import-status" aria-live="polite">CSVまたはExcelの2列を、検索キー・表示値として読み込みます。</p>
+        <p id="statusText" class="import-status" aria-live="polite">A列を検索キー、B列以降を表示値として読み込みます。1行目はタイトルとして使用します。</p>
       </section>
     </div>
 
