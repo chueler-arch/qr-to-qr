@@ -1,5 +1,6 @@
 const state = {
   entries: [], columns: [], rawRows: [], outputType: 'CODE128', outputMode: 'uniform', columnFormats: {}, outputSize: 240, zoom: 1, focus: 0.5,
+  inputSettings: { addMode: true, barcodeInput: true, overwrite: true, cameraCapture: true },
   facingMode: 'environment', stream: null, track: null, scanTimer: null,
   lastCode: '', currentOutputs: [], outputIndex: 0, currentEntry: null, keyTitle: 'A列', addMode: false, addColumnIndex: 0, overwriteHeld: false, cameraStarting: false, swipeStartX: null,
 };
@@ -12,11 +13,12 @@ const dom = {
   switchCameraBtn: byId('switchCameraBtn'), barcodeSection: byId('barcodeSection'), emptyState: byId('emptyState'),
   outputStage: byId('outputStage'), barcodeCanvas: byId('barcodeCanvas'), valueText: byId('valueText'),
   outputTitle: byId('outputTitle'), outputPager: byId('outputPager'), barcodeWarning: byId('barcodeWarning'),
-  addModeBtn: byId('addModeBtn'), addModeStage: byId('addModeStage'), addKeyTitle: byId('addKeyTitle'), addValueTitle: byId('addValueTitle'), addKeyValue: byId('addKeyValue'), addColumnValue: byId('addColumnValue'), addColumnPager: byId('addColumnPager'), overwriteHoldBtn: byId('overwriteHoldBtn'),
+  addModeBtn: byId('addModeBtn'), exitAddModeBtn: byId('exitAddModeBtn'), addModeStage: byId('addModeStage'), addKeyTitle: byId('addKeyTitle'), addValueTitle: byId('addValueTitle'), addKeyValue: byId('addKeyValue'), addColumnValue: byId('addColumnValue'), addColumnPager: byId('addColumnPager'), overwriteHoldBtn: byId('overwriteHoldBtn'),
   importModal: byId('importModal'), barcodeSettingsModal: byId('barcodeSettingsModal'), fileInput: byId('fileInput'),
   googleSheetUrl: byId('googleSheetUrl'), loadGoogleSheetBtn: byId('loadGoogleSheetBtn'), statusText: byId('statusText'),
   outputType: byId('outputType'), outputSize: byId('outputSize'), formatOptions: byId('formatOptions'), formatHelp: byId('formatHelp'),
   uniformFormatSettings: byId('uniformFormatSettings'), columnFormatSettings: byId('columnFormatSettings'), columnFormatList: byId('columnFormatList'), autoDetectFormatsBtn: byId('autoDetectFormatsBtn'), openImportBtn: byId('openImportBtn'),
+  barcodeSettingsPanel: byId('barcodeSettingsPanel'), inputSettingsPanel: byId('inputSettingsPanel'), enableAddMode: byId('enableAddMode'), enableBarcodeInput: byId('enableBarcodeInput'), enableOverwrite: byId('enableOverwrite'), enableCameraCapture: byId('enableCameraCapture'),
   openCameraSettingsBtn: byId('openCameraSettingsBtn'), openBarcodeSettingsBtn: byId('openBarcodeSettingsBtn'),
 };
 
@@ -40,6 +42,7 @@ function loadSettings() {
     if (saved.outputType) state.outputType = saved.outputType;
     if (saved.outputMode) state.outputMode = saved.outputMode;
     if (saved.columnFormats) state.columnFormats = saved.columnFormats;
+    if (saved.inputSettings) state.inputSettings = { ...state.inputSettings, ...saved.inputSettings };
     if (saved.outputSize) state.outputSize = Number(saved.outputSize);
     if (saved.zoom) state.zoom = Number(saved.zoom);
     if (saved.focus !== undefined) state.focus = Number(saved.focus);
@@ -48,7 +51,7 @@ function loadSettings() {
 
 function saveSettings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    outputType: state.outputType, outputMode: state.outputMode, columnFormats: state.columnFormats, outputSize: state.outputSize, zoom: state.zoom, focus: state.focus,
+    outputType: state.outputType, outputMode: state.outputMode, columnFormats: state.columnFormats, outputSize: state.outputSize, zoom: state.zoom, focus: state.focus, inputSettings: state.inputSettings,
   }));
 }
 
@@ -300,29 +303,61 @@ function renderAddMode() {
   dom.addKeyValue.textContent = state.currentEntry.key;
   dom.addColumnValue.textContent = value || tr('空白', 'Blank');
   dom.addColumnValue.classList.toggle('is-blank', !value);
-  dom.overwriteHoldBtn.hidden = !value;
+  dom.overwriteHoldBtn.hidden = !value || !state.inputSettings.overwrite;
   dom.addColumnPager.replaceChildren(...state.columns.map((_, index) => { const dot = document.createElement('span'); dot.classList.toggle('is-active', index === state.addColumnIndex); return dot; }));
+  updateAddActionButton();
 }
 
 function moveAddColumn(direction) {
   if (!state.columns.length) return;
   state.addColumnIndex = (state.addColumnIndex + direction + state.columns.length) % state.columns.length;
   state.overwriteHeld = false; dom.overwriteHoldBtn.classList.remove('is-held'); renderAddMode();
+  document.querySelector('.add-data-table')?.animate([{ transform:`translateX(${direction > 0 ? 48 : -48}px)`, opacity:.35 },{ transform:'translateX(0)', opacity:1 }], { duration:220, easing:'cubic-bezier(.2,.8,.2,1)' });
 }
 
 function setAddMode(enabled) {
-  if (!state.currentEntry) return;
+  if (!state.currentEntry || (enabled && !state.inputSettings.addMode)) return;
   state.addMode = enabled; state.overwriteHeld = false; dom.overwriteHoldBtn.classList.remove('is-held');
   if (enabled) { ensureWritableColumn(); state.lastCode = state.currentEntry.key; }
-  dom.addModeBtn.classList.toggle('is-active', enabled); dom.addModeBtn.textContent = enabled ? tr('追加モード終了', 'Exit Add Mode') : tr('追加モード', 'Add Mode');
   dom.outputStage.hidden = enabled; dom.addModeStage.hidden = !enabled; dom.overwriteHoldBtn.hidden = true;
-  if (enabled) renderAddMode(); else renderOutputPage();
+  if (enabled) renderAddMode(); else { renderOutputPage(); updateAddActionButton(); }
+}
+
+function updateAddActionButton() {
+  const canEnter = Boolean(state.currentEntry && state.inputSettings.addMode);
+  const capture = Boolean(state.addMode && !currentAddCell() && state.inputSettings.cameraCapture);
+  dom.addModeBtn.hidden = state.addMode ? !capture : !canEnter;
+  dom.addModeBtn.classList.toggle('is-capture', capture);
+  dom.addModeBtn.textContent = capture ? '' : '＋';
+  dom.addModeBtn.setAttribute('aria-label', capture ? tr('カメラ撮影', 'Capture Photo') : tr('追加モード', 'Add Mode'));
+}
+
+function applyInputSettings() {
+  dom.enableAddMode.checked = state.inputSettings.addMode; dom.enableBarcodeInput.checked = state.inputSettings.barcodeInput;
+  dom.enableOverwrite.checked = state.inputSettings.overwrite; dom.enableCameraCapture.checked = state.inputSettings.cameraCapture;
+  if (!state.inputSettings.addMode && state.addMode) setAddMode(false);
+  if (!state.inputSettings.overwrite) { state.overwriteHeld = false; dom.overwriteHoldBtn.classList.remove('is-held'); }
+  if (state.addMode) renderAddMode(); else updateAddActionButton();
+}
+
+async function captureCameraImage() {
+  if (!state.addMode || currentAddCell() || !state.inputSettings.cameraCapture || dom.video.readyState < 2) return;
+  const suggested = `QRtoQR_${new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)}.png`;
+  const entered = window.prompt(tr('保存する画像のファイル名を入力してください', 'Enter a filename for the image'), suggested);
+  if (!entered) return;
+  const filename = entered.toLowerCase().endsWith('.png') ? entered : `${entered}.png`;
+  const canvas = document.createElement('canvas'); canvas.width = dom.video.videoWidth; canvas.height = dom.video.videoHeight;
+  canvas.getContext('2d').drawImage(dom.video, 0, 0, canvas.width, canvas.height);
+  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+  if (!blob) return;
+  const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+  addScannedValue(filename);
 }
 
 function addScannedValue(rawValue) {
   if (!state.currentEntry || rawValue === state.currentEntry.key) return;
   const existing = currentAddCell();
-  if (existing && !state.overwriteHeld) {
+  if (existing && (!state.inputSettings.overwrite || !state.overwriteHeld)) {
     dom.scanResult.textContent = tr('上書きするには、上書きボタンを押したまま読み取ってください', 'Hold the overwrite button while scanning to replace this value');
     state.lastCode = '';
     return;
@@ -419,11 +454,15 @@ async function scanFrame() {
     }
     if (!rawValue || rawValue === state.lastCode) return;
     state.lastCode = rawValue;
-    if (state.addMode) { addScannedValue(rawValue); return; }
+    if (state.addMode) {
+      if (state.inputSettings.barcodeInput) addScannedValue(rawValue);
+      else dom.scanResult.textContent = tr('バーコード入力は設定で無効になっています', 'Barcode input is disabled in settings');
+      return;
+    }
     const match = state.entries.find((entry) => entry.key === rawValue);
     dom.scanResult.textContent = match ? tr(`読取完了：${rawValue}`, `Scanned: ${rawValue}`) : tr(`読取：${rawValue}（対応データなし）`, `Scanned: ${rawValue} (no matching data)`);
     if (!state.entries.length) return;
-    state.currentEntry = match || null; dom.addModeBtn.hidden = !match;
+    state.currentEntry = match || null; updateAddActionButton();
     if (!match && state.addMode) setAddMode(false);
     state.currentOutputs = match?.outputs || [];
     state.outputIndex = 0;
@@ -440,7 +479,9 @@ function initializeEvents() {
   dom.openImportBtn.addEventListener('click', () => openLayer(dom.importModal));
   dom.openCameraSettingsBtn.addEventListener('click', () => openLayer(dom.cameraSettings));
   dom.openBarcodeSettingsBtn.addEventListener('click', (event) => { event.stopPropagation(); openLayer(dom.barcodeSettingsModal); });
-  dom.addModeBtn.addEventListener('click', (event) => { event.stopPropagation(); setAddMode(!state.addMode); });
+  dom.addModeBtn.addEventListener('click', async (event) => { event.stopPropagation(); if (dom.addModeBtn.classList.contains('is-capture')) await captureCameraImage(); else setAddMode(true); });
+  dom.exitAddModeBtn.addEventListener('click', () => setAddMode(false));
+  document.querySelectorAll('[data-settings-tab]').forEach((button) => button.addEventListener('click', () => { const tab = button.dataset.settingsTab; document.querySelectorAll('[data-settings-tab]').forEach((item) => item.classList.toggle('is-active', item === button)); dom.barcodeSettingsPanel.hidden = tab !== 'barcode'; dom.inputSettingsPanel.hidden = tab !== 'input'; }));
   dom.barcodeSection.addEventListener('click', () => { if (!state.entries.length) openLayer(dom.importModal); });
   dom.barcodeSection.addEventListener('keydown', (event) => { if (!state.entries.length && (event.key === 'Enter' || event.key === ' ')) openLayer(dom.importModal); });
   document.querySelectorAll('[data-close]').forEach((button) => button.addEventListener('click', () => closeLayer(byId(button.dataset.close))));
@@ -448,8 +489,7 @@ function initializeEvents() {
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') document.querySelectorAll('.is-open').forEach(closeLayer); });
   document.addEventListener('qrtoqr-language-change', () => {
     renderFormatOptions(); renderColumnFormatSettings(); syncOutputModeUI();
-    dom.addModeBtn.textContent = state.addMode ? tr('追加モード終了', 'Exit Add Mode') : tr('追加モード', 'Add Mode');
-    if (state.addMode) renderAddMode();
+    applyInputSettings();
     if (state.currentOutputs.length) renderOutputPage();
     else if (state.entries.length) clearOutput(tr('コードをスキャンしてください', 'Scan a code'));
   });
@@ -464,6 +504,7 @@ function initializeEvents() {
     state.columns.forEach(({ column }, index) => { state.columnFormats[column] = detectFormat(state.rawRows.slice(1).map((row) => row[index + 1]).filter(Boolean)); });
     renderColumnFormatSettings(); saveSettings(); if (state.currentOutputs.length) renderOutputPage();
   });
+  [[dom.enableAddMode,'addMode'],[dom.enableBarcodeInput,'barcodeInput'],[dom.enableOverwrite,'overwrite'],[dom.enableCameraCapture,'cameraCapture']].forEach(([control,key]) => control.addEventListener('change', () => { state.inputSettings[key] = control.checked; state.lastCode = state.currentEntry?.key || ''; saveSettings(); applyInputSettings(); }));
   dom.outputStage.addEventListener('pointerdown', (event) => { state.swipeStartX = event.clientX; });
   dom.outputStage.addEventListener('pointerup', (event) => {
     if (state.swipeStartX === null) return;
@@ -490,6 +531,7 @@ function init() {
   dom.googleSheetUrl.value = localStorage.getItem(SHEET_URL_STORAGE_KEY) || '';
   dom.outputType.value = state.outputType; dom.outputSize.value = String(state.outputSize);
   renderFormatOptions(); renderColumnFormatSettings(); syncOutputModeUI();
+  applyInputSettings();
   dom.zoomControl.value = state.zoom; dom.focusControl.value = state.focus;
   dom.zoomValue.textContent = `${state.zoom.toFixed(1)}×`;
   initializeEvents();

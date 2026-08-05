@@ -79,7 +79,7 @@
 
       <section id="barcodeSection" class="barcode-section is-empty" tabindex="0" role="button" aria-label="バーコード表示">
         <div class="barcode-topline">
-          <div class="barcode-top-left"><div class="section-label dark">OUTPUT</div><button id="addModeBtn" class="add-mode-button" type="button" hidden>追加モード</button></div>
+          <div class="barcode-top-left"><button id="addModeBtn" class="add-mode-button" type="button" hidden aria-label="追加モード">＋</button></div>
           <button id="openBarcodeSettingsBtn" class="icon-button section-settings dark-button" type="button" aria-label="バーコード設定">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.38.34.72.65.98.3.26.7.4 1.1.42H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
           </button>
@@ -97,7 +97,7 @@
           <div id="outputPager" class="output-pager" aria-label="出力値のページ"></div>
         </div>
         <div id="addModeStage" class="add-mode-stage" hidden>
-          <p class="add-mode-guide">追加する列を左右にスワイプし、カメラでコードを読み取ってください</p>
+          <div class="add-mode-heading"><p class="add-mode-guide">追加する列を左右にスワイプし、カメラでコードを読み取ってください</p><button id="exitAddModeBtn" class="exit-add-mode" type="button">終了</button></div>
           <table class="add-data-table"><thead><tr><th id="addKeyTitle">A列</th><th id="addValueTitle">B列</th></tr></thead><tbody><tr><td id="addKeyValue"></td><td id="addColumnValue" class="is-blank">空白</td></tr></tbody></table>
           <div id="addColumnPager" class="output-pager" aria-label="追加先の列"></div>
         </div>
@@ -139,10 +139,11 @@
     <div id="barcodeSettingsModal" class="modal-layer" aria-hidden="true">
       <section class="modal-card compact-card" role="dialog" aria-modal="true" aria-labelledby="barcodeSettingsTitle">
         <div class="panel-title-row">
-          <div><span class="eyebrow">OUTPUT</span><h2 id="barcodeSettingsTitle">バーコード設定</h2></div>
+          <div><span class="eyebrow">SETTINGS</span><h2 id="barcodeSettingsTitle">入力設定</h2></div>
           <button class="icon-button close-button dark-button" data-close="barcodeSettingsModal" type="button" aria-label="閉じる">×</button>
         </div>
-        <fieldset class="setting-mode"><legend>設定方法</legend><label><input type="radio" name="outputMode" value="uniform" checked> 全て同一のバーコードを設定する</label><label><input type="radio" name="outputMode" value="perColumn"> 列ごとにバーコードを設定する</label></fieldset>
+        <div class="settings-tabs" role="tablist"><button class="settings-tab is-active" type="button" data-settings-tab="barcode" role="tab">バーコード設定</button><button class="settings-tab" type="button" data-settings-tab="input" role="tab">入力設定</button></div>
+        <div id="barcodeSettingsPanel" class="settings-tab-panel"><fieldset class="setting-mode"><legend>設定方法</legend><label><input type="radio" name="outputMode" value="uniform" checked> 全て同一のバーコードを設定する</label><label><input type="radio" name="outputMode" value="perColumn"> 列ごとにバーコードを設定する</label></fieldset>
         <div id="uniformFormatSettings"><span class="field-label">バーコード形式</span><div id="formatOptions" class="format-options" role="radiogroup" aria-label="バーコード形式"></div><div id="formatHelp" class="format-help" aria-live="polite"></div></div>
         <div id="columnFormatSettings" hidden><div class="column-settings-head"><strong>列ごとの設定</strong><button id="autoDetectFormatsBtn" class="secondary-dark-button" type="button">自動で設定する</button></div><p class="setting-note">インポート値を検査して適切な形式を提案します。自動設定後も変更できます。</p><div id="columnFormatList" class="column-format-list"></div></div>
         <select id="outputType" hidden aria-hidden="true"><option value="CODE128">CODE128 Auto</option><option value="CODE128A">CODE128 Set A</option><option value="CODE128B">CODE128 Set B</option><option value="CODE128C">CODE128 Set C</option><option value="CODE39">CODE39</option><option value="EAN13">EAN-13</option><option value="ITF">ITF</option><option value="QR">QRコード</option></select>
@@ -150,6 +151,8 @@
         <select id="outputSize" class="text-input">
           <option value="180">小（180px）</option><option value="240">中（240px）</option><option value="320">大（320px）</option>
         </select>
+        </div>
+        <div id="inputSettingsPanel" class="settings-tab-panel" hidden><div class="input-toggle-list"><label><span><strong>追加モード</strong><small>読み取り済みの行へ値を追加</small></span><input id="enableAddMode" type="checkbox" checked></label><label><span><strong>バーコード入力</strong><small>カメラで読み取った文字列をセルへ入力</small></span><input id="enableBarcodeInput" type="checkbox" checked></label><label><span><strong>上書きモード</strong><small>入力済みセルの上書きを許可</small></span><input id="enableOverwrite" type="checkbox" checked></label><label><span><strong>カメラ撮影</strong><small>画像保存とファイル名入力を使用</small></span><input id="enableCameraCapture" type="checkbox" checked></label></div></div>
         <button class="primary-button" data-close="barcodeSettingsModal" type="button">設定を適用</button>
       </section>
     </div>
