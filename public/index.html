@@ -97,12 +97,13 @@
           <div id="outputPager" class="output-pager" aria-label="出力値のページ"></div>
         </div>
         <div id="addModeStage" class="add-mode-stage" hidden>
-          <div class="add-mode-heading"><p class="add-mode-guide">追加する列を左右にスワイプし、カメラでコードを読み取ってください</p><button id="exitAddModeBtn" class="exit-add-mode" type="button">終了</button></div>
+          <div class="add-mode-heading"><button id="exitAddModeBtn" class="exit-add-mode" type="button">終了</button><p class="add-mode-guide">追加する列を左右にスワイプし、カメラでコードを読み取ってください</p></div>
           <table class="add-data-table"><thead><tr><th id="addKeyTitle">A列</th><th><span id="addValueTitle" class="add-value-slide">B列</span></th></tr></thead><tbody><tr><td id="addKeyValue"></td><td><span id="addColumnValue" class="add-value-slide is-blank">空白</span></td></tr></tbody></table>
           <div id="addColumnPager" class="output-pager" aria-label="追加先の列"></div>
         </div>
-        <button id="capturePhotoBtn" class="capture-photo-button" type="button" hidden aria-label="カメラ撮影"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 6 10 4h4l1.5 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5ZM12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/></svg></button>
+        <div id="captureControl" class="capture-control" hidden><button id="capturePhotoBtn" class="capture-photo-button" type="button" aria-label="カメラ撮影"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 6 10 4h4l1.5 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5ZM12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/></svg></button><small>押すとカメラの画像を保存します</small></div>
         <div id="overwriteControl" class="overwrite-control" hidden><button id="overwriteHoldBtn" class="overwrite-hold-button" type="button">上書き</button><small>押している間だけ上書きが有効となります</small></div>
+        <div id="deleteControl" class="delete-control" hidden><button id="deleteHoldBtn" class="delete-hold-button" type="button">削除</button><small>長押しすると値を削除できます</small></div>
       </section>
 
       <footer class="app-footer">
@@ -143,6 +144,8 @@
     </div>
 
     <div id="tokenHelpModal" class="modal-layer" aria-hidden="true"><section class="modal-card compact-card" role="dialog" aria-modal="true" aria-labelledby="tokenHelpTitle"><div class="panel-title-row"><div><span class="eyebrow">SECURITY</span><h2 id="tokenHelpTitle">共有トークンの取得手順</h2></div><button class="icon-button close-button dark-button" data-close="tokenHelpModal" type="button" aria-label="閉じる">×</button></div><ol class="token-help-steps"><li>Google Apps ScriptでQRtoQR用のプロジェクトを開きます。</li><li>「プロジェクトの設定」からスクリプト プロパティを開きます。</li><li>プロパティ名を <code>QRTOQR_TOKEN</code> とし、推測されにくい長い文字列を値に設定します。</li><li>同じ文字列をこの画面の共有トークン欄へ入力します。</li></ol><p class="import-status">トークンは第三者に公開しないでください。QRtoQRではこのブラウザ内に保存されます。</p></section></div>
+
+    <div id="deleteConfirmModal" class="modal-layer" aria-hidden="true"><section class="modal-card compact-card delete-confirm-card" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle"><div class="panel-title-row"><div><span class="eyebrow">DELETE</span><h2 id="deleteConfirmTitle">ブランクにしますか？</h2></div><button class="icon-button close-button dark-button" data-close="deleteConfirmModal" type="button" aria-label="閉じる">×</button></div><p class="import-status">選択しているセルの値を削除します。</p><div class="confirm-actions"><button class="secondary-button" data-close="deleteConfirmModal" type="button">キャンセル</button><button id="confirmDeleteBtn" class="delete-confirm-button" type="button">ブランクにする</button></div></section></div>
 
     <div id="barcodeSettingsModal" class="modal-layer" aria-hidden="true">
       <section class="modal-card compact-card" role="dialog" aria-modal="true" aria-labelledby="barcodeSettingsTitle">
