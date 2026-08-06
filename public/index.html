@@ -98,11 +98,11 @@
         </div>
         <div id="addModeStage" class="add-mode-stage" hidden>
           <div class="add-mode-heading"><p class="add-mode-guide">追加する列を左右にスワイプし、カメラでコードを読み取ってください</p><button id="exitAddModeBtn" class="exit-add-mode" type="button">終了</button></div>
-          <table class="add-data-table"><thead><tr><th id="addKeyTitle">A列</th><th id="addValueTitle">B列</th></tr></thead><tbody><tr><td id="addKeyValue"></td><td id="addColumnValue" class="is-blank">空白</td></tr></tbody></table>
+          <table class="add-data-table"><thead><tr><th id="addKeyTitle">A列</th><th><span id="addValueTitle" class="add-value-slide">B列</span></th></tr></thead><tbody><tr><td id="addKeyValue"></td><td><span id="addColumnValue" class="add-value-slide is-blank">空白</span></td></tr></tbody></table>
           <div id="addColumnPager" class="output-pager" aria-label="追加先の列"></div>
         </div>
-        <button id="capturePhotoBtn" class="capture-photo-button" type="button" hidden aria-label="カメラ撮影"></button>
-        <button id="overwriteHoldBtn" class="overwrite-hold-button" type="button" hidden>押している間だけ上書き</button>
+        <button id="capturePhotoBtn" class="capture-photo-button" type="button" hidden aria-label="カメラ撮影"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 6 10 4h4l1.5 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5ZM12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/></svg></button>
+        <div id="overwriteControl" class="overwrite-control" hidden><button id="overwriteHoldBtn" class="overwrite-hold-button" type="button">上書き</button><small>押している間だけ上書きが有効となります</small></div>
       </section>
 
       <footer class="app-footer">
@@ -133,11 +133,16 @@
         <div class="divider"><span>または</span></div>
         <label class="field-label" for="googleSheetUrl">公開Google Spreadsheet</label>
         <input id="googleSheetUrl" class="text-input" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/..." />
+        <button class="token-help-link" type="button" data-open-token-help>共有トークン</button>
+        <input id="importAppsScriptToken" class="text-input" type="password" autocomplete="off" placeholder="Spreadsheet上書き用の共有トークン">
+        <p class="import-status">Spreadsheetに上書きする場合には、共有トークンが必要です。</p>
         <button id="loadGoogleSheetBtn" class="primary-button" type="button">Spreadsheetを読み込む</button>
         <p id="statusText" class="import-status" aria-live="polite">A列を検索キー、B列以降を表示値として読み込みます。1行目はタイトルとして使用します。</p></div>
-        <div id="exportPanel" hidden><button id="exportCsvBtn" class="file-export-button" type="button">CSVファイルをエクスポート</button><div class="divider"><span>または</span></div><label class="field-label" for="appsScriptUrl">Google Apps Script WebアプリURL</label><input id="appsScriptUrl" class="text-input" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec"><label class="field-label" for="appsScriptToken">共有トークン</label><input id="appsScriptToken" class="text-input" type="password" autocomplete="off" placeholder="Apps Scriptに設定した共有トークン"><button id="overwriteSheetBtn" class="primary-button" type="button">Spreadsheetを上書き</button><p id="exportStatus" class="import-status" aria-live="polite">Spreadsheetへの書き込みには、専用Apps Scriptのデプロイが必要です。</p></div>
+        <div id="exportPanel" hidden><button id="exportCsvBtn" class="file-export-button" type="button">CSVファイルをエクスポート</button><div class="divider"><span>または</span></div><label class="field-label" for="appsScriptUrl">Google Apps Script WebアプリURL</label><input id="appsScriptUrl" class="text-input" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec"><button class="token-help-link" type="button" data-open-token-help>共有トークン</button><input id="appsScriptToken" class="text-input" type="password" autocomplete="off" placeholder="Apps Scriptに設定した共有トークン"><p class="import-status">Spreadsheetに上書きする場合には、共有トークンが必要です。</p><button id="overwriteSheetBtn" class="primary-button" type="button">Spreadsheetを上書き</button><p id="exportStatus" class="import-status" aria-live="polite">Spreadsheetへの書き込みには、専用Apps Scriptのデプロイが必要です。</p></div>
       </section>
     </div>
+
+    <div id="tokenHelpModal" class="modal-layer" aria-hidden="true"><section class="modal-card compact-card" role="dialog" aria-modal="true" aria-labelledby="tokenHelpTitle"><div class="panel-title-row"><div><span class="eyebrow">SECURITY</span><h2 id="tokenHelpTitle">共有トークンの取得手順</h2></div><button class="icon-button close-button dark-button" data-close="tokenHelpModal" type="button" aria-label="閉じる">×</button></div><ol class="token-help-steps"><li>Google Apps ScriptでQRtoQR用のプロジェクトを開きます。</li><li>「プロジェクトの設定」からスクリプト プロパティを開きます。</li><li>プロパティ名を <code>QRTOQR_TOKEN</code> とし、推測されにくい長い文字列を値に設定します。</li><li>同じ文字列をこの画面の共有トークン欄へ入力します。</li></ol><p class="import-status">トークンは第三者に公開しないでください。QRtoQRではこのブラウザ内に保存されます。</p></section></div>
 
     <div id="barcodeSettingsModal" class="modal-layer" aria-hidden="true">
       <section class="modal-card compact-card" role="dialog" aria-modal="true" aria-labelledby="barcodeSettingsTitle">

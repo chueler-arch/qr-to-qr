@@ -13,9 +13,9 @@ const dom = {
   switchCameraBtn: byId('switchCameraBtn'), barcodeSection: byId('barcodeSection'), emptyState: byId('emptyState'),
   outputStage: byId('outputStage'), barcodeCanvas: byId('barcodeCanvas'), valueText: byId('valueText'),
   outputTitle: byId('outputTitle'), outputPager: byId('outputPager'), barcodeWarning: byId('barcodeWarning'),
-  addModeBtn: byId('addModeBtn'), exitAddModeBtn: byId('exitAddModeBtn'), addModeStage: byId('addModeStage'), addKeyTitle: byId('addKeyTitle'), addValueTitle: byId('addValueTitle'), addKeyValue: byId('addKeyValue'), addColumnValue: byId('addColumnValue'), addColumnPager: byId('addColumnPager'), capturePhotoBtn: byId('capturePhotoBtn'), overwriteHoldBtn: byId('overwriteHoldBtn'),
+  addModeBtn: byId('addModeBtn'), exitAddModeBtn: byId('exitAddModeBtn'), addModeStage: byId('addModeStage'), addKeyTitle: byId('addKeyTitle'), addValueTitle: byId('addValueTitle'), addKeyValue: byId('addKeyValue'), addColumnValue: byId('addColumnValue'), addColumnPager: byId('addColumnPager'), capturePhotoBtn: byId('capturePhotoBtn'), overwriteControl: byId('overwriteControl'), overwriteHoldBtn: byId('overwriteHoldBtn'),
   importModal: byId('importModal'), barcodeSettingsModal: byId('barcodeSettingsModal'), fileInput: byId('fileInput'),
-  googleSheetUrl: byId('googleSheetUrl'), loadGoogleSheetBtn: byId('loadGoogleSheetBtn'), statusText: byId('statusText'),
+  googleSheetUrl: byId('googleSheetUrl'), importAppsScriptToken: byId('importAppsScriptToken'), loadGoogleSheetBtn: byId('loadGoogleSheetBtn'), statusText: byId('statusText'), tokenHelpModal: byId('tokenHelpModal'),
   outputType: byId('outputType'), outputSize: byId('outputSize'), formatOptions: byId('formatOptions'), formatHelp: byId('formatHelp'),
   uniformFormatSettings: byId('uniformFormatSettings'), columnFormatSettings: byId('columnFormatSettings'), columnFormatList: byId('columnFormatList'), autoDetectFormatsBtn: byId('autoDetectFormatsBtn'), openImportBtn: byId('openImportBtn'),
   barcodeSettingsPanel: byId('barcodeSettingsPanel'), inputSettingsPanel: byId('inputSettingsPanel'), enableAddMode: byId('enableAddMode'), enableBarcodeInput: byId('enableBarcodeInput'), enableOverwrite: byId('enableOverwrite'), enableCameraCapture: byId('enableCameraCapture'),
@@ -109,7 +109,7 @@ function updateEntries(rows) {
     return false;
   }
   state.lastCode = '';
-  state.currentEntry = null; state.addMode = false; state.overwriteHeld = false; dom.addModeBtn.hidden = true; dom.addModeStage.hidden = true; dom.overwriteHoldBtn.hidden = true;
+  state.currentEntry = null; state.addMode = false; state.overwriteHeld = false; dom.addModeBtn.hidden = true; dom.addModeStage.hidden = true; dom.overwriteControl.hidden = true;
   state.currentOutputs = [];
   state.outputIndex = 0;
   dom.barcodeSection.classList.remove('is-empty');
@@ -308,22 +308,23 @@ function renderAddMode() {
   dom.addKeyValue.textContent = state.currentEntry.key;
   dom.addColumnValue.textContent = value || tr('空白', 'Blank');
   dom.addColumnValue.classList.toggle('is-blank', !value);
-  dom.overwriteHoldBtn.hidden = !value || !state.inputSettings.overwrite;
+  dom.overwriteControl.hidden = !value || !state.inputSettings.overwrite;
   dom.addColumnPager.replaceChildren(...state.columns.map((_, index) => { const dot = document.createElement('span'); dot.classList.toggle('is-active', index === state.addColumnIndex); return dot; }));
   updateAddActionButton();
 }
 
 function moveAddColumn(direction) {
   if (!state.columns.length) return;
-  const table = document.querySelector('.add-data-table');
+  const movingCells = [...document.querySelectorAll('.add-value-slide')];
   const distance = direction > 0 ? -90 : 90;
   const changeColumn = () => {
     state.addColumnIndex = (state.addColumnIndex + direction + state.columns.length) % state.columns.length;
     state.overwriteHeld = false; dom.overwriteHoldBtn.classList.remove('is-held'); renderAddMode();
-    table?.animate([{ transform:`translateX(${-distance}px)`, opacity:.15 },{ transform:'translateX(0)', opacity:1 }], { duration:190, easing:'cubic-bezier(.2,.8,.2,1)' });
+    movingCells.forEach((cell) => cell.animate([{ transform:`translateX(${-distance}px)`, opacity:.15 },{ transform:'translateX(0)', opacity:1 }], { duration:190, easing:'cubic-bezier(.2,.8,.2,1)' }));
   };
-  if (!table?.animate) { changeColumn(); return; }
-  const animation = table.animate([{ transform:'translateX(0)', opacity:1 },{ transform:`translateX(${distance}px)`, opacity:.15 }], { duration:150, easing:'ease-in' });
+  if (!movingCells[0]?.animate) { changeColumn(); return; }
+  const animations = movingCells.map((cell) => cell.animate([{ transform:'translateX(0)', opacity:1 },{ transform:`translateX(${distance}px)`, opacity:.15 }], { duration:150, easing:'ease-in' }));
+  const animation = animations[0];
   animation.finished.then(changeColumn).catch(changeColumn);
 }
 
@@ -331,7 +332,7 @@ function setAddMode(enabled) {
   if (!state.currentEntry || (enabled && !state.inputSettings.addMode)) return;
   state.addMode = enabled; state.overwriteHeld = false; dom.overwriteHoldBtn.classList.remove('is-held');
   if (enabled) { ensureWritableColumn(); state.lastCode = state.currentEntry.key; }
-  dom.outputStage.hidden = enabled; dom.addModeStage.hidden = !enabled; dom.overwriteHoldBtn.hidden = true;
+  dom.outputStage.hidden = enabled; dom.addModeStage.hidden = !enabled; dom.overwriteControl.hidden = true;
   if (enabled) renderAddMode(); else { renderOutputPage(); updateAddActionButton(); }
 }
 
@@ -343,7 +344,7 @@ function updateAddActionButton() {
   dom.addModeBtn.setAttribute('aria-label', state.addMode ? tr('バーコード表示', 'Barcode Display') : tr('データ入力', 'Data Input'));
   const blank = !currentAddCell();
   dom.capturePhotoBtn.hidden = !(state.addMode && blank && state.inputSettings.cameraCapture);
-  dom.overwriteHoldBtn.hidden = !(state.addMode && !blank && state.inputSettings.overwrite);
+  dom.overwriteControl.hidden = !(state.addMode && !blank && state.inputSettings.overwrite);
 }
 
 function applyInputSettings() {
@@ -550,6 +551,7 @@ function initializeEvents() {
   });
   dom.fileInput.addEventListener('change', (event) => importFromFile(event.target.files[0]));
   dom.loadGoogleSheetBtn.addEventListener('click', importFromGoogleSheet);
+  document.querySelectorAll('[data-open-token-help]').forEach((button) => button.addEventListener('click', () => openLayer(dom.tokenHelpModal)));
   document.querySelectorAll('[data-transfer-tab]').forEach((button) => button.addEventListener('click', () => setTransferTab(button.dataset.transferTab)));
   dom.exportCsvBtn.addEventListener('click', exportCsv);
   dom.overwriteSheetBtn.addEventListener('click', overwriteSpreadsheet);
@@ -557,7 +559,9 @@ function initializeEvents() {
     localStorage.setItem(SHEET_URL_STORAGE_KEY, dom.googleSheetUrl.value.trim());
   });
   dom.appsScriptUrl.addEventListener('input', () => localStorage.setItem(APPS_SCRIPT_URL_STORAGE_KEY, dom.appsScriptUrl.value.trim()));
-  dom.appsScriptToken.addEventListener('input', () => localStorage.setItem(APPS_SCRIPT_TOKEN_STORAGE_KEY, dom.appsScriptToken.value));
+  const syncToken = (source, target) => { target.value = source.value; localStorage.setItem(APPS_SCRIPT_TOKEN_STORAGE_KEY, source.value); };
+  dom.appsScriptToken.addEventListener('input', () => syncToken(dom.appsScriptToken, dom.importAppsScriptToken));
+  dom.importAppsScriptToken.addEventListener('input', () => syncToken(dom.importAppsScriptToken, dom.appsScriptToken));
   dom.outputType.addEventListener('change', syncOutputSettings); dom.outputSize.addEventListener('change', syncOutputSettings);
   document.querySelectorAll('input[name="outputMode"]').forEach((radio) => radio.addEventListener('change', () => { state.outputMode = radio.value; syncOutputModeUI(); saveSettings(); if (state.currentOutputs.length) renderOutputPage(); }));
   dom.autoDetectFormatsBtn.addEventListener('click', () => {
@@ -591,6 +595,7 @@ function init() {
   dom.googleSheetUrl.value = localStorage.getItem(SHEET_URL_STORAGE_KEY) || '';
   dom.appsScriptUrl.value = localStorage.getItem(APPS_SCRIPT_URL_STORAGE_KEY) || '';
   dom.appsScriptToken.value = localStorage.getItem(APPS_SCRIPT_TOKEN_STORAGE_KEY) || '';
+  dom.importAppsScriptToken.value = dom.appsScriptToken.value;
   dom.outputType.value = state.outputType; dom.outputSize.value = String(state.outputSize);
   renderFormatOptions(); renderColumnFormatSettings(); syncOutputModeUI();
   applyInputSettings();
