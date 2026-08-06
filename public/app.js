@@ -483,21 +483,30 @@ async function applyCameraControl(kind, value) {
   try { await state.track.applyConstraints({ advanced: [{ [kind]: value }] }); } catch { /* Unsupported by this camera. */ }
 }
 
+function decodeWithQuagga(canvas) {
+  return new Promise((resolve) => {
+    if (!window.Quagga) { resolve(''); return; }
+    Quagga.decodeSingle({ src:canvas.toDataURL('image/jpeg', .92), numOfWorkers:0, locate:true, inputStream:{ size:1280 }, locator:{ patchSize:'medium', halfSample:false }, decoder:{ readers:['code_128_reader'] } }, (result) => resolve(result?.codeResult?.code || ''));
+  });
+}
+
 async function scanFrame() {
   if (!state.track || dom.video.readyState < 2 || state.scanBusy) return;
   state.scanBusy = true;
   let rawValue = '';
+  let frameCanvas = null;
   try {
     if ('BarcodeDetector' in window) try {
       const detector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'itf'] });
       const detected = await detector.detect(dom.video); rawValue = detected[0]?.rawValue || '';
     } catch { /* Continue with the cross-browser decoders. */ }
     if (!rawValue) {
-      const canvas = document.createElement('canvas');
-      canvas.width = dom.video.videoWidth || 640; canvas.height = dom.video.videoHeight || 480;
-      const context = canvas.getContext('2d', { willReadFrequently: true });
-      context.drawImage(dom.video, 0, 0, canvas.width, canvas.height);
-      const image = context.getImageData(0, 0, canvas.width, canvas.height);
+      frameCanvas = document.createElement('canvas');
+      const sourceWidth = dom.video.videoWidth || 640; const sourceHeight = dom.video.videoHeight || 480; const scale = Math.min(1, 1280 / sourceWidth);
+      frameCanvas.width = Math.round(sourceWidth * scale); frameCanvas.height = Math.round(sourceHeight * scale);
+      const context = frameCanvas.getContext('2d', { willReadFrequently: true });
+      context.drawImage(dom.video, 0, 0, frameCanvas.width, frameCanvas.height);
+      const image = context.getImageData(0, 0, frameCanvas.width, frameCanvas.height);
       rawValue = window.jsQR(image.data, image.width, image.height)?.data || '';
     }
     if (!rawValue && window.ZXing) {
@@ -506,11 +515,14 @@ async function scanFrame() {
           const hints = new Map();
           hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39, ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.ITF]);
           hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
-          state.zxingReader = new ZXing.BrowserMultiFormatReader(hints, 400);
+          state.zxingReader = new ZXing.MultiFormatReader(); state.zxingReader.setHints(hints);
         }
-        rawValue = (await state.zxingReader.decodeFromVideoElement(dom.video))?.getText?.() || '';
+        const source = new ZXing.HTMLCanvasElementLuminanceSource(frameCanvas);
+        const bitmap = new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(source));
+        rawValue = state.zxingReader.decodeWithState(bitmap)?.getText?.() || '';
       } catch { /* A frame without a barcode is expected. */ }
     }
+    if (!rawValue && frameCanvas) rawValue = await decodeWithQuagga(frameCanvas);
     if (!rawValue || rawValue === state.lastCode) return;
     state.lastCode = rawValue;
     if (state.addMode) {
@@ -587,7 +599,7 @@ function selectGoogleSpreadsheet(purpose) {
     initializeGoogleServices();
     if (!state.googlePickerReady || !window.google?.picker) { const target = purpose === 'import' ? dom.statusText : dom.exportStatus; target.textContent = tr('Google Pickerを準備しています。数秒後にもう一度お試しください。', 'Google Picker is loading. Try again in a few seconds.'); return; }
     const view = new google.picker.DocsView().setMimeTypes('application/vnd.google-apps.spreadsheet').setSelectFolderEnabled(false);
-    const picker = new google.picker.PickerBuilder().addView(view).setOAuthToken(state.googleAccessToken).setDeveloperKey(GOOGLE_API_KEY).setAppId(GOOGLE_APP_ID).setCallback(handleGooglePicker).build();
+    const picker = new google.picker.PickerBuilder().addView(view).setOAuthToken(state.googleAccessToken).setDeveloperKey(GOOGLE_API_KEY).setAppId(GOOGLE_APP_ID).setOrigin(window.location.origin).setCallback(handleGooglePicker).build();
     picker.setVisible(true);
   });
 }
@@ -760,7 +772,7 @@ function init() {
   dom.zoomValue.textContent = `${state.zoom.toFixed(1)}×`;
   initializeEvents();
   window.addEventListener('load', initializeGoogleServices);
-  if (!(window.JsBarcode && window.QRCode && window.jsQR && window.XLSX && window.ZXing)) setImportStatus(tr('必要なライブラリを読み込めませんでした。', 'Required libraries could not be loaded.'), true);
+  if (!(window.JsBarcode && window.QRCode && window.jsQR && window.XLSX && window.ZXing && window.Quagga)) setImportStatus(tr('必要なライブラリを読み込めませんでした。', 'Required libraries could not be loaded.'), true);
   startCamera();
 }
 
