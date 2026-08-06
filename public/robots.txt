@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://qr-to-qr.pages.dev/sitemap.xml
+Sitemap: https://qrtoqr.sona-craft.com/sitemap.xml
