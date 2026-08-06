@@ -80,6 +80,7 @@
       <section id="barcodeSection" class="barcode-section is-empty" tabindex="0" role="button" aria-label="バーコード表示">
         <div class="barcode-topline">
           <div class="barcode-top-left"><button id="addModeBtn" class="add-mode-button" type="button" hidden aria-label="追加モード">＋</button></div>
+          <span id="sheetSyncStatus" class="sheet-sync-status" hidden></span>
           <button id="openBarcodeSettingsBtn" class="icon-button section-settings dark-button" type="button" aria-label="バーコード設定">
             <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 15.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.88l.06.06-2.83 2.83-.06-.06A1.7 1.7 0 0 0 15 19.4a1.7 1.7 0 0 0-1 .6 1.7 1.7 0 0 0-.4 1.1V21h-4v-.09A1.7 1.7 0 0 0 8.6 19.4a1.7 1.7 0 0 0-1.88.34l-.06.06-2.83-2.83.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-.6-1 1.7 1.7 0 0 0-1.1-.4H3v-4h.09A1.7 1.7 0 0 0 4.6 8.6a1.7 1.7 0 0 0-.34-1.88l-.06-.06 2.83-2.83.06.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-.6 1.7 1.7 0 0 0 .4-1.1V3h4v.09A1.7 1.7 0 0 0 15.4 4.6a1.7 1.7 0 0 0 1.88-.34l.06-.06 2.83 2.83-.06.06A1.7 1.7 0 0 0 19.4 9c.12.38.34.72.65.98.3.26.7.4 1.1.42H21v4h-.09A1.7 1.7 0 0 0 19.4 15Z"/></svg>
           </button>
@@ -139,7 +140,7 @@
         <input id="googleSheetUrl" class="text-input" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/..." />
         <button id="loadGoogleSheetBtn" class="primary-button" type="button">Spreadsheetを読み込む</button>
         <p id="statusText" class="import-status" aria-live="polite">A列を検索キー、B列以降を表示値として読み込みます。1行目はタイトルとして使用します。</p></div>
-        <div id="exportPanel" hidden><button id="exportCsvBtn" class="file-export-button" type="button">CSVファイルをエクスポート</button><div class="divider"><span>または</span></div><button id="selectExportSheetBtn" class="google-connect-button" type="button">上書き先のGoogle Spreadsheetを選択</button><p id="exportSheetName" class="selected-sheet-name">Spreadsheetが選択されていません。</p><button id="overwriteSheetBtn" class="primary-button" type="button">Spreadsheetを上書き</button><p id="exportStatus" class="import-status" aria-live="polite">Googleアカウントで接続すると、選択したSpreadsheetへ上書きできます。</p></div>
+        <div id="exportPanel" hidden><button id="exportCsvBtn" class="file-export-button" type="button">CSVファイルをエクスポート</button><div class="divider"><span>または</span></div><button id="selectExportSheetBtn" class="google-connect-button" type="button">保存先のGoogle Spreadsheetを選択</button><p id="exportSheetName" class="selected-sheet-name">Spreadsheetが選択されていません。</p><button id="overwriteSheetBtn" class="primary-button" type="button">今すぐ保存</button><p id="exportStatus" class="import-status" aria-live="polite">Googleアカウントで接続すると、変更したセルだけを保存できます。</p></div>
       </section>
     </div>
 
@@ -168,6 +169,6 @@
 
     <script src="https://accounts.google.com/gsi/client" async defer></script><script src="https://apis.google.com/js/api.js" async defer></script>
     <script src="i18n.js"></script><script src="vendor/xlsx.full.min.js"></script><script src="vendor/JsBarcode.all.min.js"></script>
-    <script src="vendor/qrcode.min.js"></script><script src="vendor/jsQR.min.js"></script><script src="app.js"></script>
+    <script src="vendor/qrcode.min.js"></script><script src="vendor/jsQR.min.js"></script><script src="vendor/zxing.min.js"></script><script src="app.js"></script>
   </body>
 </html>

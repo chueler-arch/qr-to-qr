@@ -3,7 +3,8 @@ const state = {
   inputSettings: { addMode: true, barcodeInput: true, overwrite: true, cameraCapture: true },
   facingMode: 'environment', stream: null, track: null, scanTimer: null,
   lastCode: '', currentOutputs: [], outputIndex: 0, currentEntry: null, keyTitle: 'A列', addMode: false, addColumnIndex: 0, overwriteHeld: false, cameraStarting: false, swipeStartX: null,
-  googleAccessToken: '', googleTokenExpiresAt: 0, googleTokenClient: null, googlePickerReady: false, selectedSpreadsheetId: '', selectedSpreadsheetName: '', googlePickerPurpose: 'import',
+  googleAccessToken: '', googleTokenExpiresAt: 0, googleTokenClient: null, googlePickerReady: false, selectedSpreadsheetId: '', selectedSpreadsheetName: '', selectedSheetTitle: '', sourceSpreadsheetId: '', googlePickerPurpose: 'import',
+  dirtyCells: new Map(), autoSaveTimer: null, autoSaveInFlight: false, dirtyVersion: 0, zxingReader: null, scanBusy: false,
 };
 
 const byId = (id) => document.getElementById(id);
@@ -20,7 +21,7 @@ const dom = {
   outputType: byId('outputType'), outputSize: byId('outputSize'), formatOptions: byId('formatOptions'), formatHelp: byId('formatHelp'),
   uniformFormatSettings: byId('uniformFormatSettings'), columnFormatSettings: byId('columnFormatSettings'), columnFormatList: byId('columnFormatList'), autoDetectFormatsBtn: byId('autoDetectFormatsBtn'), openImportBtn: byId('openImportBtn'),
   barcodeSettingsPanel: byId('barcodeSettingsPanel'), inputSettingsPanel: byId('inputSettingsPanel'), enableAddMode: byId('enableAddMode'), enableBarcodeInput: byId('enableBarcodeInput'), enableOverwrite: byId('enableOverwrite'), enableCameraCapture: byId('enableCameraCapture'),
-  dataTransferBtnLabel: byId('dataTransferBtnLabel'), exportTabBtn: byId('exportTabBtn'), importPanel: byId('importPanel'), exportPanel: byId('exportPanel'), exportCsvBtn: byId('exportCsvBtn'), selectExportSheetBtn: byId('selectExportSheetBtn'), exportSheetName: byId('exportSheetName'), overwriteSheetBtn: byId('overwriteSheetBtn'), exportStatus: byId('exportStatus'),
+  dataTransferBtnLabel: byId('dataTransferBtnLabel'), exportTabBtn: byId('exportTabBtn'), importPanel: byId('importPanel'), exportPanel: byId('exportPanel'), exportCsvBtn: byId('exportCsvBtn'), selectExportSheetBtn: byId('selectExportSheetBtn'), exportSheetName: byId('exportSheetName'), overwriteSheetBtn: byId('overwriteSheetBtn'), exportStatus: byId('exportStatus'), sheetSyncStatus: byId('sheetSyncStatus'),
   openCameraSettingsBtn: byId('openCameraSettingsBtn'), openBarcodeSettingsBtn: byId('openBarcodeSettingsBtn'),
 };
 
@@ -87,8 +88,18 @@ function columnName(index) {
   return name;
 }
 
-function updateEntries(rows) {
+function updateEntries(rows, options = {}) {
   const normalizedRows = rows.map((row) => row.map((cell) => String(cell ?? '').trim()));
+  state.dirtyCells.clear();
+  if (state.autoSaveTimer) window.clearTimeout(state.autoSaveTimer);
+  state.autoSaveTimer = null;
+  if (options.googleSpreadsheet) state.sourceSpreadsheetId = state.selectedSpreadsheetId;
+  else {
+    state.sourceSpreadsheetId = ''; state.selectedSpreadsheetId = ''; state.selectedSpreadsheetName = ''; state.selectedSheetTitle = '';
+    dom.selectedSheetName.textContent = tr('Googleアカウントに接続されていません。', 'Not connected to a Google Account.');
+    dom.exportSheetName.textContent = tr('Spreadsheetが選択されていません。', 'No Spreadsheet selected.');
+  }
+  updateSyncStatus('idle');
   const titles = normalizedRows[0]?.slice(1) || [];
   state.rawRows = normalizedRows;
   state.keyTitle = normalizedRows[0]?.[0] || 'A列';
@@ -385,6 +396,7 @@ function addScannedValue(rawValue) {
     return;
   }
   const row = state.rawRows[state.currentEntry.rowIndex]; row[state.addColumnIndex + 1] = rawValue;
+  markCellDirty(state.currentEntry.rowIndex, state.addColumnIndex + 1, rawValue);
   const meta = state.columns[state.addColumnIndex];
   const output = { value: rawValue, title: meta.title || `${meta.column}列`, column: meta.column };
   const existingIndex = state.currentEntry.outputs.findIndex((item) => item.column === meta.column);
@@ -400,6 +412,7 @@ function clearCurrentAddCell() {
   if (!state.currentEntry || !currentAddCell()) return;
   const meta = state.columns[state.addColumnIndex];
   state.rawRows[state.currentEntry.rowIndex][state.addColumnIndex + 1] = '';
+  markCellDirty(state.currentEntry.rowIndex, state.addColumnIndex + 1, '');
   state.currentEntry.outputs = state.currentEntry.outputs.filter((item) => item.column !== meta.column);
   state.currentOutputs = state.currentEntry.outputs;
   state.columnFormats[meta.column] = detectFormat(state.rawRows.slice(1).map((row) => row[state.addColumnIndex + 1]).filter(Boolean));
@@ -449,7 +462,7 @@ async function startCamera() {
   stopCamera();
   try {
     state.stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: { ideal: state.facingMode }, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false,
+      video: { facingMode: { ideal: state.facingMode }, width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } }, audio: false,
     });
     state.track = state.stream.getVideoTracks()[0];
     dom.video.srcObject = state.stream;
@@ -471,13 +484,14 @@ async function applyCameraControl(kind, value) {
 }
 
 async function scanFrame() {
-  if (!state.track || dom.video.readyState < 2) return;
+  if (!state.track || dom.video.readyState < 2 || state.scanBusy) return;
+  state.scanBusy = true;
   let rawValue = '';
   try {
-    if ('BarcodeDetector' in window) {
+    if ('BarcodeDetector' in window) try {
       const detector = new BarcodeDetector({ formats: ['qr_code', 'code_128', 'code_39', 'ean_13', 'itf'] });
       const detected = await detector.detect(dom.video); rawValue = detected[0]?.rawValue || '';
-    }
+    } catch { /* Continue with the cross-browser decoders. */ }
     if (!rawValue) {
       const canvas = document.createElement('canvas');
       canvas.width = dom.video.videoWidth || 640; canvas.height = dom.video.videoHeight || 480;
@@ -485,6 +499,17 @@ async function scanFrame() {
       context.drawImage(dom.video, 0, 0, canvas.width, canvas.height);
       const image = context.getImageData(0, 0, canvas.width, canvas.height);
       rawValue = window.jsQR(image.data, image.width, image.height)?.data || '';
+    }
+    if (!rawValue && window.ZXing) {
+      try {
+        if (!state.zxingReader) {
+          const hints = new Map();
+          hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.CODE_39, ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.ITF]);
+          hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+          state.zxingReader = new ZXing.BrowserMultiFormatReader(hints, 400);
+        }
+        rawValue = (await state.zxingReader.decodeFromVideoElement(dom.video))?.getText?.() || '';
+      } catch { /* A frame without a barcode is expected. */ }
     }
     if (!rawValue || rawValue === state.lastCode) return;
     state.lastCode = rawValue;
@@ -502,6 +527,7 @@ async function scanFrame() {
     state.outputIndex = 0;
     renderOutputPage();
   } catch (error) { console.error(error); }
+  finally { state.scanBusy = false; }
 }
 
 function syncOutputSettings() {
@@ -569,18 +595,24 @@ function selectGoogleSpreadsheet(purpose) {
 async function handleGooglePicker(data) {
   if (data.action !== google.picker.Action.PICKED) return;
   const file = data.docs[0];
-  state.selectedSpreadsheetId = file.id; state.selectedSpreadsheetName = file.name || tr('選択したSpreadsheet', 'Selected Spreadsheet');
+  state.selectedSpreadsheetId = file.id; state.selectedSpreadsheetName = file.name || tr('選択したSpreadsheet', 'Selected Spreadsheet'); state.selectedSheetTitle = '';
   dom.selectedSheetName.textContent = state.selectedSpreadsheetName;
   dom.exportSheetName.textContent = state.selectedSpreadsheetName;
   if (state.googlePickerPurpose === 'import') await importSelectedSpreadsheet();
-  else dom.exportStatus.textContent = tr('上書き先を選択しました。', 'Overwrite destination selected.');
+  else {
+    if (state.selectedSpreadsheetId !== state.sourceSpreadsheetId) markAllCellsDirty();
+    dom.exportStatus.textContent = tr('上書き先を選択しました。「今すぐ保存」を押してください。', 'Destination selected. Press Save Now.');
+    updateSyncStatus('pending');
+  }
 }
 
 async function getFirstSheetTitle() {
+  if (state.selectedSheetTitle) return state.selectedSheetTitle;
   const response = await googleApiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(state.selectedSpreadsheetId)}?fields=sheets.properties.title`);
   const body = await response.json();
   if (!response.ok) throw new Error(body.error?.message || `HTTP ${response.status}`);
-  return body.sheets?.[0]?.properties?.title || 'Sheet1';
+  state.selectedSheetTitle = body.sheets?.[0]?.properties?.title || 'Sheet1';
+  return state.selectedSheetTitle;
 }
 
 function sheetRange(title, cells) { return `'${String(title).replace(/'/g, "''")}'!${cells}`; }
@@ -593,28 +625,65 @@ async function importSelectedSpreadsheet() {
     const response = await googleApiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(state.selectedSpreadsheetId)}/values/${encodeURIComponent(range)}`);
     const body = await response.json();
     if (!response.ok) throw new Error(body.error?.message || `HTTP ${response.status}`);
-    updateEntries(body.values || []);
+    updateEntries(body.values || [], { googleSpreadsheet:true });
+    dom.exportStatus.textContent = tr('変更は約1秒後に自動保存されます。', 'Changes are saved automatically after about one second.');
   } catch (error) { console.error(error); setImportStatus(tr(`Spreadsheetを読み込めませんでした：${error.message}`, `Could not load Spreadsheet: ${error.message}`), true); }
 }
 
-function overwriteSpreadsheet() {
+function updateSyncStatus(status, detail = '') {
+  const labels = { idle:'', pending:tr('未保存', 'Unsaved'), saving:tr('保存中…', 'Saving…'), saved:tr('保存済み', 'Saved'), error:tr('未保存の変更があります', 'Unsaved changes') };
+  dom.sheetSyncStatus.hidden = status === 'idle';
+  dom.sheetSyncStatus.textContent = detail || labels[status] || '';
+  dom.sheetSyncStatus.dataset.status = status;
+  if (status !== 'idle') dom.exportStatus.textContent = detail || labels[status];
+}
+
+function markCellDirty(rowIndex, columnIndex, value, schedule = true) {
+  const key = `${rowIndex}:${columnIndex}`;
+  state.dirtyCells.set(key, { rowIndex, columnIndex, value:String(value ?? ''), version:++state.dirtyVersion });
+  updateSyncStatus('pending');
+  if (schedule && state.selectedSpreadsheetId && state.selectedSpreadsheetId === state.sourceSpreadsheetId) scheduleAutoSave();
+}
+
+function markAllCellsDirty() {
+  state.dirtyCells.clear();
+  state.rawRows.forEach((row, rowIndex) => row.forEach((value, columnIndex) => markCellDirty(rowIndex, columnIndex, value, false)));
+}
+
+function scheduleAutoSave() {
+  if (state.autoSaveTimer) window.clearTimeout(state.autoSaveTimer);
+  state.autoSaveTimer = window.setTimeout(() => { state.autoSaveTimer = null; flushDirtyCells(false); }, 1000);
+}
+
+async function writeDirtyCells() {
+  if (!state.dirtyCells.size || state.autoSaveInFlight) return;
+  state.autoSaveInFlight = true; updateSyncStatus('saving'); dom.overwriteSheetBtn.disabled = true;
+  const snapshot = [...state.dirtyCells.entries()];
+  let succeeded = false;
+  try {
+    const title = await getFirstSheetTitle();
+    const data = snapshot.map(([, cell]) => ({ range:sheetRange(title, `${columnName(cell.columnIndex)}${cell.rowIndex + 1}`), majorDimension:'ROWS', values:[[cell.value]] }));
+    const response = await googleApiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(state.selectedSpreadsheetId)}/values:batchUpdate`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ valueInputOption:'RAW', data }) });
+    const body = await response.json();
+    if (!response.ok) throw new Error(body.error?.message || `HTTP ${response.status}`);
+    snapshot.forEach(([key, cell]) => { if (state.dirtyCells.get(key)?.version === cell.version) state.dirtyCells.delete(key); });
+    state.sourceSpreadsheetId = state.selectedSpreadsheetId;
+    succeeded = true;
+    updateSyncStatus(state.dirtyCells.size ? 'pending' : 'saved', tr(`${body.totalUpdatedCells || snapshot.length}セルを保存しました`, `Saved ${body.totalUpdatedCells || snapshot.length} cells`));
+  } catch (error) { console.error(error); updateSyncStatus('error', tr(`保存できませんでした：${error.message}`, `Save failed: ${error.message}`)); }
+  finally { state.autoSaveInFlight = false; dom.overwriteSheetBtn.disabled = false; if (succeeded && state.dirtyCells.size && state.selectedSpreadsheetId === state.sourceSpreadsheetId) scheduleAutoSave(); }
+}
+
+function flushDirtyCells(interactive = true) {
   if (!state.selectedSpreadsheetId) { dom.exportStatus.textContent = tr('上書き先のSpreadsheetを選択してください。', 'Select a Spreadsheet to overwrite.'); return; }
-  requestGoogleToken(async (authError) => {
-    if (authError) { dom.exportStatus.textContent = authError.message; return; }
-    dom.overwriteSheetBtn.disabled = true; dom.exportStatus.textContent = tr('Spreadsheetへ書き込んでいます…', 'Writing to Spreadsheet…');
-    try {
-      const title = await getFirstSheetTitle();
-      const clearRange = sheetRange(title, 'A:ZZZ');
-      const clearResponse = await googleApiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(state.selectedSpreadsheetId)}/values/${encodeURIComponent(clearRange)}:clear`, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:'{}' });
-      if (!clearResponse.ok) { const body = await clearResponse.json(); throw new Error(body.error?.message || `HTTP ${clearResponse.status}`); }
-      const writeRange = sheetRange(title, 'A1');
-      const writeResponse = await googleApiFetch(`https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(state.selectedSpreadsheetId)}/values/${encodeURIComponent(writeRange)}?valueInputOption=RAW`, { method:'PUT', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify({ range:writeRange, majorDimension:'ROWS', values:state.rawRows }) });
-      const body = await writeResponse.json();
-      if (!writeResponse.ok) throw new Error(body.error?.message || `HTTP ${writeResponse.status}`);
-      dom.exportStatus.textContent = tr(`${body.updatedRows || state.rawRows.length}行を上書きしました。`, `Overwrote ${body.updatedRows || state.rawRows.length} rows.`);
-    } catch (error) { console.error(error); dom.exportStatus.textContent = tr(`上書きできませんでした：${error.message}`, `Overwrite failed: ${error.message}`); }
-    finally { dom.overwriteSheetBtn.disabled = false; }
-  });
+  if (!state.dirtyCells.size) { updateSyncStatus('saved', tr('保存する変更はありません', 'No changes to save')); return; }
+  const tokenValid = state.googleAccessToken && Date.now() < state.googleTokenExpiresAt - 60000;
+  if (!tokenValid && !interactive) { updateSyncStatus('error', tr('再接続して保存してください', 'Reconnect to save')); return; }
+  requestGoogleToken((authError) => { if (authError) updateSyncStatus('error', authError.message); else writeDirtyCells(); });
+}
+
+function overwriteSpreadsheet() {
+  flushDirtyCells(true);
 }
 
 function initializeEvents() {
@@ -678,6 +747,7 @@ function initializeEvents() {
   dom.switchCameraBtn.addEventListener('click', async () => { state.facingMode = state.facingMode === 'environment' ? 'user' : 'environment'; await startCamera(); });
   dom.retryCameraBtn.addEventListener('click', startCamera);
   window.addEventListener('pagehide', stopCamera);
+  window.addEventListener('beforeunload', (event) => { if (state.dirtyCells.size) event.preventDefault(); });
 }
 
 function init() {
@@ -690,7 +760,7 @@ function init() {
   dom.zoomValue.textContent = `${state.zoom.toFixed(1)}×`;
   initializeEvents();
   window.addEventListener('load', initializeGoogleServices);
-  if (!(window.JsBarcode && window.QRCode && window.jsQR && window.XLSX)) setImportStatus(tr('必要なライブラリを読み込めませんでした。', 'Required libraries could not be loaded.'), true);
+  if (!(window.JsBarcode && window.QRCode && window.jsQR && window.XLSX && window.ZXing)) setImportStatus(tr('必要なライブラリを読み込めませんでした。', 'Required libraries could not be loaded.'), true);
   startCamera();
 }
 
