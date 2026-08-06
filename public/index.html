@@ -132,18 +132,16 @@
           <input id="fileInput" type="file" accept=".csv,.xlsx,.xls,.xlsm" />
         </label>
         <div class="divider"><span>または</span></div>
+        <button id="selectGoogleSheetBtn" class="google-connect-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6V2Zm8 1.5V8h4.5M9 12h8M9 16h8M9 20h8"/></svg>Google Spreadsheetを選択</button>
+        <p id="selectedSheetName" class="selected-sheet-name">Googleアカウントに接続されていません。</p>
+        <div class="divider"><span>または公開URLから読み込む</span></div>
         <label class="field-label" for="googleSheetUrl">公開Google Spreadsheet</label>
         <input id="googleSheetUrl" class="text-input" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/..." />
-        <button class="token-help-link" type="button" data-open-token-help>共有トークン</button>
-        <input id="importAppsScriptToken" class="text-input" type="password" autocomplete="off" placeholder="Spreadsheet上書き用の共有トークン">
-        <p class="import-status">Spreadsheetに上書きする場合には、共有トークンが必要です。</p>
         <button id="loadGoogleSheetBtn" class="primary-button" type="button">Spreadsheetを読み込む</button>
         <p id="statusText" class="import-status" aria-live="polite">A列を検索キー、B列以降を表示値として読み込みます。1行目はタイトルとして使用します。</p></div>
-        <div id="exportPanel" hidden><button id="exportCsvBtn" class="file-export-button" type="button">CSVファイルをエクスポート</button><div class="divider"><span>または</span></div><label class="field-label" for="appsScriptUrl">Google Apps Script WebアプリURL</label><input id="appsScriptUrl" class="text-input" type="url" inputmode="url" placeholder="https://script.google.com/macros/s/.../exec"><button class="token-help-link" type="button" data-open-token-help>共有トークン</button><input id="appsScriptToken" class="text-input" type="password" autocomplete="off" placeholder="Apps Scriptに設定した共有トークン"><p class="import-status">Spreadsheetに上書きする場合には、共有トークンが必要です。</p><button id="overwriteSheetBtn" class="primary-button" type="button">Spreadsheetを上書き</button><p id="exportStatus" class="import-status" aria-live="polite">Spreadsheetへの書き込みには、専用Apps Scriptのデプロイが必要です。</p></div>
+        <div id="exportPanel" hidden><button id="exportCsvBtn" class="file-export-button" type="button">CSVファイルをエクスポート</button><div class="divider"><span>または</span></div><button id="selectExportSheetBtn" class="google-connect-button" type="button">上書き先のGoogle Spreadsheetを選択</button><p id="exportSheetName" class="selected-sheet-name">Spreadsheetが選択されていません。</p><button id="overwriteSheetBtn" class="primary-button" type="button">Spreadsheetを上書き</button><p id="exportStatus" class="import-status" aria-live="polite">Googleアカウントで接続すると、選択したSpreadsheetへ上書きできます。</p></div>
       </section>
     </div>
-
-    <div id="tokenHelpModal" class="modal-layer" aria-hidden="true"><section class="modal-card compact-card" role="dialog" aria-modal="true" aria-labelledby="tokenHelpTitle"><div class="panel-title-row"><div><span class="eyebrow">SECURITY</span><h2 id="tokenHelpTitle">共有トークンの取得手順</h2></div><button class="icon-button close-button dark-button" data-close="tokenHelpModal" type="button" aria-label="閉じる">×</button></div><ol class="token-help-steps"><li>Google Apps ScriptでQRtoQR用のプロジェクトを開きます。</li><li>「プロジェクトの設定」からスクリプト プロパティを開きます。</li><li>プロパティ名を <code>QRTOQR_TOKEN</code> とし、推測されにくい長い文字列を値に設定します。</li><li>同じ文字列をこの画面の共有トークン欄へ入力します。</li></ol><p class="import-status">トークンは第三者に公開しないでください。QRtoQRではこのブラウザ内に保存されます。</p></section></div>
 
     <div id="deleteConfirmModal" class="modal-layer" aria-hidden="true"><section class="modal-card compact-card delete-confirm-card" role="dialog" aria-modal="true" aria-labelledby="deleteConfirmTitle"><div class="panel-title-row"><div><span class="eyebrow">DELETE</span><h2 id="deleteConfirmTitle">ブランクにしますか？</h2></div><button class="icon-button close-button dark-button" data-close="deleteConfirmModal" type="button" aria-label="閉じる">×</button></div><p class="import-status">選択しているセルの値を削除します。</p><div class="confirm-actions"><button class="secondary-button" data-close="deleteConfirmModal" type="button">キャンセル</button><button id="confirmDeleteBtn" class="delete-confirm-button" type="button">ブランクにする</button></div></section></div>
 
@@ -168,6 +166,7 @@
       </section>
     </div>
 
+    <script src="https://accounts.google.com/gsi/client" async defer></script><script src="https://apis.google.com/js/api.js" async defer></script>
     <script src="i18n.js"></script><script src="vendor/xlsx.full.min.js"></script><script src="vendor/JsBarcode.all.min.js"></script>
     <script src="vendor/qrcode.min.js"></script><script src="vendor/jsQR.min.js"></script><script src="app.js"></script>
   </body>
