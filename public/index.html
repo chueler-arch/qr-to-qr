@@ -30,10 +30,10 @@
       <header class="app-header">
         <div class="brand" aria-label="QRtoQR">
           <img class="app-icon" src="images/QRtoQR_icon.png" alt="" />
-          <span class="brand-copy">
-            <strong>QRtoQR</strong>
+          <div class="brand-copy">
+            <h1>QRtoQR</h1>
             <small>QR・バーコードをCSV・Spreadsheetデータで変換</small>
-          </span>
+          </div>
         </div>
         <div class="header-actions"><button class="language-toggle" type="button">EN</button><button id="openImportBtn" class="header-action" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 15v4h14v-4" /></svg>
@@ -89,7 +89,12 @@
           </button>
         </div>
         <div id="emptyState" class="empty-state">
-          <svg viewBox="0 0 48 48" aria-hidden="true"><path d="M9 7h12v12H9zm4 4v4h4v-4zm14-4h12v12H27zm4 4v4h4v-4zM9 27h12v12H9zm4 4v4h4v-4zm15-4h4v4h-4zm7 0h4v8h-4zm-8 8h5v4h-5zm8 3h4v1h-4z"/></svg>
+          <section class="homepage-description" aria-labelledby="homepageDescriptionTitle">
+            <h2 id="homepageDescriptionTitle">QRtoQRについて</h2>
+            <p id="homepagePurpose">QRtoQRは、カメラで読み取ったQRコードやバーコードを、CSV・Excel・Google Spreadsheetの登録データと照合し、対応するコードを表示・編集するWebアプリです。</p>
+            <p id="googleDataPurpose">Googleアカウント連携は、利用者が選択したSpreadsheetのデータを読み取り、変更したセルを書き戻す目的にのみ使用します。データとアクセストークンは当アプリのサーバーに保存しません。</p>
+            <a id="homepagePrivacyLink" href="privacy.html">プライバシーポリシーを確認する</a>
+          </section>
           <strong>データをインポートしてください</strong>
           <span>タップしてインポート画面を開く</span>
         </div>

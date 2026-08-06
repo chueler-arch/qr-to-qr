@@ -13,6 +13,7 @@ const dom = {
   scanResult: byId('scanResult'), cameraSettings: byId('cameraSettings'), zoomControl: byId('zoomControl'),
   focusControl: byId('focusControl'), zoomValue: byId('zoomValue'), focusValue: byId('focusValue'),
   switchCameraBtn: byId('switchCameraBtn'), barcodeSection: byId('barcodeSection'), emptyState: byId('emptyState'),
+  homepageDescriptionTitle: byId('homepageDescriptionTitle'), homepagePurpose: byId('homepagePurpose'), googleDataPurpose: byId('googleDataPurpose'), homepagePrivacyLink: byId('homepagePrivacyLink'),
   outputStage: byId('outputStage'), barcodeCanvas: byId('barcodeCanvas'), valueText: byId('valueText'),
   outputTitle: byId('outputTitle'), outputPager: byId('outputPager'), barcodeWarning: byId('barcodeWarning'),
   addModeBtn: byId('addModeBtn'), exitAddModeBtn: byId('exitAddModeBtn'), addModeStage: byId('addModeStage'), addKeyTitle: byId('addKeyTitle'), addValueTitle: byId('addValueTitle'), addKeyValue: byId('addKeyValue'), addColumnValue: byId('addColumnValue'), addColumnPager: byId('addColumnPager'), captureControl: byId('captureControl'), capturePhotoBtn: byId('capturePhotoBtn'), overwriteControl: byId('overwriteControl'), overwriteHoldBtn: byId('overwriteHoldBtn'), deleteControl: byId('deleteControl'), deleteHoldBtn: byId('deleteHoldBtn'), deleteConfirmModal: byId('deleteConfirmModal'), confirmDeleteBtn: byId('confirmDeleteBtn'),
@@ -708,10 +709,15 @@ function initializeEvents() {
   document.querySelectorAll('[data-settings-tab]').forEach((button) => button.addEventListener('click', () => { const tab = button.dataset.settingsTab; document.querySelectorAll('[data-settings-tab]').forEach((item) => item.classList.toggle('is-active', item === button)); dom.barcodeSettingsPanel.hidden = tab !== 'barcode'; dom.inputSettingsPanel.hidden = tab !== 'input'; }));
   dom.barcodeSection.addEventListener('click', () => { if (!state.entries.length) openLayer(dom.importModal); });
   dom.barcodeSection.addEventListener('keydown', (event) => { if (!state.entries.length && (event.key === 'Enter' || event.key === ' ')) openLayer(dom.importModal); });
+  dom.homepagePrivacyLink.addEventListener('click', (event) => event.stopPropagation());
   document.querySelectorAll('[data-close]').forEach((button) => button.addEventListener('click', () => closeLayer(byId(button.dataset.close))));
   document.querySelectorAll('.modal-layer').forEach((layer) => layer.addEventListener('click', (event) => { if (event.target === layer) closeLayer(layer); }));
   document.addEventListener('keydown', (event) => { if (event.key === 'Escape') document.querySelectorAll('.is-open').forEach(closeLayer); });
   document.addEventListener('qrtoqr-language-change', () => {
+    dom.homepageDescriptionTitle.textContent = tr('QRtoQRについて', 'About QRtoQR');
+    dom.homepagePurpose.textContent = tr('QRtoQRは、カメラで読み取ったQRコードやバーコードを、CSV・Excel・Google Spreadsheetの登録データと照合し、対応するコードを表示・編集するWebアプリです。', 'QRtoQR is a web app that matches QR codes and barcodes scanned with the camera against imported CSV, Excel, or Google Spreadsheet data, then displays and edits the corresponding codes.');
+    dom.googleDataPurpose.textContent = tr('Googleアカウント連携は、利用者が選択したSpreadsheetのデータを読み取り、変更したセルを書き戻す目的にのみ使用します。データとアクセストークンは当アプリのサーバーに保存しません。', 'Google Account access is used only to read the Spreadsheet selected by the user and write back changed cells. Spreadsheet data and access tokens are not stored on our server.');
+    dom.homepagePrivacyLink.textContent = tr('プライバシーポリシーを確認する', 'Read the Privacy Policy');
     dom.dataTransferBtnLabel.textContent = state.entries.length ? tr('データエクスポート', 'Export Data') : tr('データインポート', 'Import Data');
     renderFormatOptions(); renderColumnFormatSettings(); syncOutputModeUI();
     applyInputSettings();
