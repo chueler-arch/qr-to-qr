@@ -18,7 +18,7 @@ const dom = {
   outputTitle: byId('outputTitle'), outputPager: byId('outputPager'), barcodeWarning: byId('barcodeWarning'),
   addModeBtn: byId('addModeBtn'), exitAddModeBtn: byId('exitAddModeBtn'), addModeStage: byId('addModeStage'), addKeyTitle: byId('addKeyTitle'), addValueTitle: byId('addValueTitle'), addKeyValue: byId('addKeyValue'), addColumnValue: byId('addColumnValue'), addColumnPager: byId('addColumnPager'), captureControl: byId('captureControl'), capturePhotoBtn: byId('capturePhotoBtn'), overwriteControl: byId('overwriteControl'), overwriteHoldBtn: byId('overwriteHoldBtn'), deleteControl: byId('deleteControl'), deleteHoldBtn: byId('deleteHoldBtn'), deleteConfirmModal: byId('deleteConfirmModal'), confirmDeleteBtn: byId('confirmDeleteBtn'),
   importModal: byId('importModal'), barcodeSettingsModal: byId('barcodeSettingsModal'), fileInput: byId('fileInput'),
-  googleSheetUrl: byId('googleSheetUrl'), loadGoogleSheetBtn: byId('loadGoogleSheetBtn'), selectGoogleSheetBtn: byId('selectGoogleSheetBtn'), selectedSheetName: byId('selectedSheetName'), statusText: byId('statusText'),
+  googleSheetUrl: byId('googleSheetUrl'), loadGoogleSheetBtn: byId('loadGoogleSheetBtn'), selectGoogleSheetBtn: byId('selectGoogleSheetBtn'), selectedSheetName: byId('selectedSheetName'), importLoading: byId('importLoading'), statusText: byId('statusText'),
   outputType: byId('outputType'), outputSize: byId('outputSize'), formatOptions: byId('formatOptions'), formatHelp: byId('formatHelp'),
   uniformFormatSettings: byId('uniformFormatSettings'), columnFormatSettings: byId('columnFormatSettings'), columnFormatList: byId('columnFormatList'), autoDetectFormatsBtn: byId('autoDetectFormatsBtn'), openImportBtn: byId('openImportBtn'),
   barcodeSettingsPanel: byId('barcodeSettingsPanel'), inputSettingsPanel: byId('inputSettingsPanel'), enableAddMode: byId('enableAddMode'), enableBarcodeInput: byId('enableBarcodeInput'), enableOverwrite: byId('enableOverwrite'), enableCameraCapture: byId('enableCameraCapture'),
@@ -76,6 +76,16 @@ function closeLayer(element) {
 function setImportStatus(message, isError = false) {
   dom.statusText.textContent = message;
   dom.statusText.classList.toggle('is-error', isError);
+}
+
+function setImportLoading(isLoading) {
+  dom.importLoading.hidden = !isLoading;
+  dom.importLoading.querySelector('strong').textContent = tr('データを読み込んでいます', 'Loading data');
+  dom.importPanel.setAttribute('aria-busy', String(isLoading));
+  dom.fileInput.disabled = isLoading;
+  dom.selectGoogleSheetBtn.disabled = isLoading;
+  dom.loadGoogleSheetBtn.disabled = isLoading;
+  dom.googleSheetUrl.disabled = isLoading;
 }
 
 function columnName(index) {
@@ -164,6 +174,7 @@ function buildGoogleExportUrl(url) {
 
 async function importFromFile(file) {
   if (!file) return;
+  setImportLoading(true);
   setImportStatus(tr(`${file.name}を読み込んでいます…`, `Loading ${file.name}…`));
   try {
     const extension = file.name.split('.').pop()?.toLowerCase();
@@ -175,18 +186,20 @@ async function importFromFile(file) {
       updateEntries(rawRows.filter((row) => row.length >= 2));
     } else setImportStatus(tr('CSVまたはExcelファイルを選択してください。', 'Choose a CSV or Excel file.'), true);
   } catch (error) { setImportStatus(error.message || tr('ファイルを読み込めませんでした。', 'The file could not be loaded.'), true); }
-  finally { dom.fileInput.value = ''; }
+  finally { dom.fileInput.value = ''; setImportLoading(false); }
 }
 
 async function importFromGoogleSheet() {
   const url = dom.googleSheetUrl.value.trim();
   if (!url) { setImportStatus(tr('Google SpreadsheetのURLを入力してください。', 'Enter a Google Spreadsheet URL.'), true); return; }
+  setImportLoading(true);
   setImportStatus(tr('Spreadsheetを読み込んでいます…', 'Loading Spreadsheet…'));
   try {
     const response = await fetch(buildGoogleExportUrl(url), { mode: 'cors' });
     if (!response.ok) throw new Error(tr('Spreadsheetを読み込めませんでした。公開設定を確認してください。', 'The Spreadsheet could not be loaded. Check its sharing settings.'));
     updateEntries(parseCSV(await response.text()));
   } catch (error) { setImportStatus(error.message || tr('Spreadsheetの読み込みに失敗しました。', 'Failed to load the Spreadsheet.'), true); }
+  finally { setImportLoading(false); }
 }
 
 function detectFormat(values) {
@@ -631,6 +644,7 @@ async function getFirstSheetTitle() {
 function sheetRange(title, cells) { return `'${String(title).replace(/'/g, "''")}'!${cells}`; }
 
 async function importSelectedSpreadsheet() {
+  setImportLoading(true);
   setImportStatus(tr('Spreadsheetを読み込んでいます…', 'Loading Spreadsheet…'));
   try {
     const title = await getFirstSheetTitle();
@@ -641,6 +655,7 @@ async function importSelectedSpreadsheet() {
     updateEntries(body.values || [], { googleSpreadsheet:true });
     dom.exportStatus.textContent = tr('変更は約1秒後に自動保存されます。', 'Changes are saved automatically after about one second.');
   } catch (error) { console.error(error); setImportStatus(tr(`Spreadsheetを読み込めませんでした：${error.message}`, `Could not load Spreadsheet: ${error.message}`), true); }
+  finally { setImportLoading(false); }
 }
 
 function updateSyncStatus(status, detail = '') {

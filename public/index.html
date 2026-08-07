@@ -106,11 +106,12 @@
           <div id="outputPager" class="output-pager" aria-label="出力値のページ"></div>
         </div>
         <div id="addModeStage" class="add-mode-stage" hidden>
-          <div class="add-mode-heading"><button id="exitAddModeBtn" class="exit-add-mode" type="button">終了</button><p class="add-mode-guide">追加する列を左右にスワイプし、カメラでコードを読み取ってください</p></div>
+          <div class="add-mode-heading"><p class="add-mode-guide">追加する列を左右にスワイプし、カメラでコードを読み取ってください</p></div>
           <table class="add-data-table"><thead><tr><th id="addKeyTitle">A列</th><th><span id="addValueTitle" class="add-value-slide">B列</span></th></tr></thead><tbody><tr><td id="addKeyValue"></td><td><span id="addColumnValue" class="add-value-slide is-blank">空白</span></td></tr></tbody></table>
           <div id="addColumnPager" class="output-pager" aria-label="追加先の列"></div>
+          <button id="exitAddModeBtn" class="exit-add-mode" type="button">終了</button>
+          <div id="captureControl" class="capture-control" hidden><button id="capturePhotoBtn" class="capture-photo-button" type="button" aria-label="カメラ撮影"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 6 10 4h4l1.5 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5ZM12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/></svg></button><small>押すとカメラの画像を保存します</small></div>
         </div>
-        <div id="captureControl" class="capture-control" hidden><button id="capturePhotoBtn" class="capture-photo-button" type="button" aria-label="カメラ撮影"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 6 10 4h4l1.5 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5ZM12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/></svg></button><small>押すとカメラの画像を保存します</small></div>
         <div id="overwriteControl" class="overwrite-control" hidden><button id="overwriteHoldBtn" class="overwrite-hold-button" type="button">上書き</button><small>押している間だけ上書きが有効となります</small></div>
         <div id="deleteControl" class="delete-control" hidden><button id="deleteHoldBtn" class="delete-hold-button" type="button">削除</button><small>長押しすると値を削除できます</small></div>
       </section>
@@ -147,6 +148,7 @@
         <label class="field-label" for="googleSheetUrl">公開Google Spreadsheet</label>
         <input id="googleSheetUrl" class="text-input" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/..." />
         <button id="loadGoogleSheetBtn" class="primary-button" type="button">Spreadsheetを読み込む</button>
+        <div id="importLoading" class="import-loading" role="status" aria-live="polite" hidden><span class="import-loading-spinner" aria-hidden="true"></span><strong>データを読み込んでいます</strong></div>
         <p id="statusText" class="import-status" aria-live="polite">A列を検索キー、B列以降を表示値として読み込みます。1行目はタイトルとして使用します。</p></div>
         <div id="exportPanel" hidden><button id="exportCsvBtn" class="file-export-button" type="button">CSVファイルをエクスポート</button><div class="divider"><span>または</span></div><button id="selectExportSheetBtn" class="google-connect-button" type="button">保存先のGoogle Spreadsheetを選択</button><p id="exportSheetName" class="selected-sheet-name">Spreadsheetが選択されていません。</p><button id="overwriteSheetBtn" class="primary-button" type="button">今すぐ保存</button><p id="exportStatus" class="import-status" aria-live="polite">Googleアカウントで接続すると、変更したセルだけを保存できます。</p></div>
       </section>

@@ -15,3 +15,19 @@
 .app-shell,.app-shell *{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.app-shell input,.app-shell textarea,.app-shell [contenteditable="true"]{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
 .brand-copy{display:grid;line-height:1.05}.brand-copy strong{font-size:.78rem}.brand-copy small{margin-top:2px;color:var(--muted);font-size:clamp(.43rem,1.65vw,.56rem);font-weight:650;letter-spacing:0}
 .brand-copy h1{margin:0;font-size:.78rem;line-height:1;font-weight:850;letter-spacing:-.03em}.homepage-description{width:min(100%,620px);margin:0 0 10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;background:#fff;text-align:left;box-shadow:0 4px 16px rgba(15,34,60,.05)}.homepage-description h2{margin:0 0 5px;font-size:.82rem}.homepage-description p{margin:3px 0;color:#526176;font-size:clamp(.58rem,1.8vw,.68rem);line-height:1.45}.homepage-description a{display:inline-block;margin-top:5px;color:#1769aa;font-size:.64rem;font-weight:800;text-decoration:underline}.empty-state:has(.homepage-description)>strong{font-size:.82rem}.empty-state:has(.homepage-description)>span{margin-top:2px;font-size:.62rem}@media(max-height:650px){.homepage-description{margin-bottom:5px;padding:6px 9px}.homepage-description p{line-height:1.28}.homepage-description a{margin-top:2px}}
+
+/* Keep add-mode controls in the document flow so they never cover the table. */
+.add-mode-stage{justify-content:flex-start;padding:0 6px 3px;overflow:hidden}
+.add-mode-heading{flex:0 0 auto;margin:0 0 4px}
+.add-mode-guide{line-height:1.25}
+.add-data-table{flex:0 0 auto}
+.add-mode-stage>.output-pager{flex:0 0 auto;margin-top:4px}
+.add-mode-stage>.exit-add-mode{align-self:flex-end;flex:0 0 auto;margin:3px max(0px,calc((100% - min(100%,420px))/2)) 0 0}
+.capture-control{position:static;left:auto;bottom:auto;z-index:auto;flex:0 0 auto;width:auto;margin-top:3px;transform:none;text-align:center}
+.capture-photo-button{width:48px;height:48px}
+.capture-control small{margin-top:2px;line-height:1;white-space:nowrap}
+
+.import-loading{display:flex;align-items:center;justify-content:center;gap:9px;margin:12px 0 2px;padding:10px 12px;border-radius:10px;background:#eef7ff;color:#174f7d}
+.import-loading-spinner{width:20px;height:20px;flex:0 0 auto;border:3px solid #bdd8ee;border-top-color:#1769aa;border-radius:50%;animation:spin .75s linear infinite}
+.import-loading strong{font-size:.72rem}
+#importPanel[aria-busy="true"] button:disabled,#importPanel[aria-busy="true"] input:disabled{cursor:wait;opacity:.6}
