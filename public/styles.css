@@ -38,8 +38,14 @@
 .import-choice-button svg{width:30px;height:30px;flex:0 0 auto;fill:none;stroke:#1769aa;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 .import-choice-button span{display:grid;gap:3px}.import-choice-button strong{font-size:.8rem}.import-choice-button small{color:var(--muted);font-size:.63rem;line-height:1.4}
 .drive-choice{border-color:#afd0b9;background:#f4fbf6}.drive-choice svg{stroke:#188038}
-.public-sheet-title{margin:0;font-size:.84rem}
-.spreadsheet-help{margin:9px 0 13px;border:1px solid var(--line);border-radius:10px;background:#f8fafc;color:#425269;font-size:.69rem;line-height:1.55}
-.spreadsheet-help summary{padding:10px 12px;color:#225a94;font-weight:850;cursor:pointer}
-.spreadsheet-help ol{margin:0;padding:0 18px 8px 34px}.spreadsheet-help p{margin:0;padding:0 12px 11px;color:var(--muted)}
+.public-sheet-title{margin:0;font-size:1.15rem;letter-spacing:-.03em}
+.spreadsheet-url-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:stretch}
+.spreadsheet-url-row .primary-button{width:auto;margin:0;padding:9px 13px;white-space:nowrap}
+.spreadsheet-help{margin:8px 0 0;color:#425269;font-size:.69rem;line-height:1.55}
+.spreadsheet-help summary{padding:4px 0;color:#225a94;font-weight:850;cursor:pointer}
+.spreadsheet-help ol{margin:5px 0 0;padding:0 0 4px 22px}.spreadsheet-help p{margin:4px 0 0;color:var(--muted)}
 .capture-photo-button:disabled{cursor:wait;opacity:.6}
+.header-action.is-icon-only{display:grid;place-items:center;width:38px;height:38px;padding:0;border-radius:50%}
+.header-action.is-icon-only svg{width:19px;height:19px}
+.data-hyperlink{color:#1769aa;text-decoration:underline;text-decoration-thickness:1px;text-underline-offset:2px;overflow-wrap:anywhere}
+.add-value-slide .data-hyperlink{display:block;font-size:.72rem;line-height:1.3}

@@ -22,7 +22,7 @@ const dom = {
   outputType: byId('outputType'), outputSize: byId('outputSize'), formatOptions: byId('formatOptions'), formatHelp: byId('formatHelp'),
   uniformFormatSettings: byId('uniformFormatSettings'), columnFormatSettings: byId('columnFormatSettings'), columnFormatList: byId('columnFormatList'), autoDetectFormatsBtn: byId('autoDetectFormatsBtn'), openImportBtn: byId('openImportBtn'),
   barcodeSettingsPanel: byId('barcodeSettingsPanel'), inputSettingsPanel: byId('inputSettingsPanel'), enableAddMode: byId('enableAddMode'), enableBarcodeInput: byId('enableBarcodeInput'), enableOverwrite: byId('enableOverwrite'), enableCameraCapture: byId('enableCameraCapture'),
-  dataTransferBtnLabel: byId('dataTransferBtnLabel'), exportTabBtn: byId('exportTabBtn'), importPanel: byId('importPanel'), exportPanel: byId('exportPanel'), exportCsvBtn: byId('exportCsvBtn'), selectExportSheetBtn: byId('selectExportSheetBtn'), exportSheetName: byId('exportSheetName'), overwriteSheetBtn: byId('overwriteSheetBtn'), exportStatus: byId('exportStatus'), sheetSyncStatus: byId('sheetSyncStatus'),
+  dataTransferBtnLabel: byId('dataTransferBtnLabel'), importTabBtn: byId('importTabBtn'), exportTabBtn: byId('exportTabBtn'), importPanel: byId('importPanel'), exportPanel: byId('exportPanel'), exportCsvBtn: byId('exportCsvBtn'), selectExportSheetBtn: byId('selectExportSheetBtn'), exportSheetName: byId('exportSheetName'), overwriteSheetBtn: byId('overwriteSheetBtn'), exportStatus: byId('exportStatus'), sheetSyncStatus: byId('sheetSyncStatus'),
   openCameraSettingsBtn: byId('openCameraSettingsBtn'), openBarcodeSettingsBtn: byId('openBarcodeSettingsBtn'),
 };
 
@@ -95,6 +95,24 @@ function updateSpreadsheetControls() {
   if (directlyConnected) dom.exportStatus.textContent = tr('変更は約1秒後にGoogle Spreadsheetへ自動保存されます。', 'Changes are saved to Google Spreadsheet automatically after about one second.');
 }
 
+function updateHeaderTransferButton() {
+  const exportMode = state.entries.length > 0;
+  dom.dataTransferBtnLabel.hidden = exportMode;
+  dom.openImportBtn.classList.toggle('is-icon-only', exportMode);
+  dom.openImportBtn.setAttribute('aria-label', exportMode ? tr('データエクスポート', 'Export Data') : tr('データインポート', 'Import Data'));
+  if (!exportMode) dom.dataTransferBtnLabel.textContent = tr('データインポート', 'Import Data');
+}
+
+function renderLinkedText(element, value) {
+  const text = String(value ?? '');
+  if (/^https?:\/\/[^\s]+$/i.test(text)) {
+    const link = document.createElement('a');
+    link.href = text; link.target = '_blank'; link.rel = 'noopener noreferrer'; link.textContent = text;
+    link.className = 'data-hyperlink';
+    element.replaceChildren(link);
+  } else element.textContent = text;
+}
+
 function columnName(index) {
   let number = index + 1;
   let name = '';
@@ -149,7 +167,7 @@ function updateEntries(rows, options = {}) {
   dom.barcodeSection.removeAttribute('role');
   dom.emptyState.hidden = true;
   dom.outputStage.hidden = false;
-  dom.dataTransferBtnLabel.textContent = tr('データエクスポート', 'Export Data'); dom.exportTabBtn.disabled = false;
+  dom.exportTabBtn.disabled = false; updateHeaderTransferButton();
   clearOutput(tr('コードをスキャンしてください', 'Scan a code'));
   setImportStatus(tr(`${state.entries.length}件のデータをインポートしました。`, `${state.entries.length} records imported.`));
   window.setTimeout(() => closeLayer(dom.importModal), 450);
@@ -282,7 +300,7 @@ function renderBarcode(value, format = state.outputType) {
   const canvas = dom.barcodeCanvas;
   const analysis = analyzeBarcodeValue(value, format);
   dom.barcodeWarning.hidden = !analysis.warnings.length; dom.barcodeWarning.textContent = analysis.warnings.join(' ');
-  if (!analysis.valid) { const context = canvas.getContext('2d'); context.clearRect(0, 0, canvas.width, canvas.height); dom.valueText.textContent = value; return; }
+  if (!analysis.valid) { const context = canvas.getContext('2d'); context.clearRect(0, 0, canvas.width, canvas.height); renderLinkedText(dom.valueText, value); return; }
   try {
     if (format === 'QR') {
       QRCode.toCanvas(canvas, analysis.encodedValue, { width: state.outputSize, margin: 2 }, (error) => {
@@ -291,7 +309,7 @@ function renderBarcode(value, format = state.outputType) {
     } else {
       JsBarcode(canvas, analysis.encodedValue, { format, displayValue: false, margin: 8, width: 2, height: Math.max(64, state.outputSize * .48) });
     }
-    dom.valueText.textContent = value;
+    renderLinkedText(dom.valueText, value);
   } catch { clearOutput(tr(`${format}形式で描画できない値です`, `This value cannot be rendered as ${format}.`)); }
 }
 
@@ -342,7 +360,7 @@ function renderAddMode() {
   dom.addKeyTitle.textContent = state.keyTitle || 'A列';
   dom.addValueTitle.textContent = column.title || `${column.column}列`;
   dom.addKeyValue.textContent = state.currentEntry.key;
-  dom.addColumnValue.textContent = value || tr('空白', 'Blank');
+  renderLinkedText(dom.addColumnValue, value || tr('空白', 'Blank'));
   dom.addColumnValue.classList.toggle('is-blank', !value);
   dom.overwriteControl.hidden = !value || !state.inputSettings.overwrite;
   dom.deleteControl.hidden = !value;
@@ -773,7 +791,7 @@ function initializeEvents() {
     dom.homepagePurpose.textContent = tr('QRtoQRは、カメラで読み取ったQRコードやバーコードを、CSV・Excel・Google Spreadsheetの登録データと照合し、対応するコードを表示・編集するWebアプリです。', 'QRtoQR is a web app that matches QR codes and barcodes scanned with the camera against imported CSV, Excel, or Google Spreadsheet data, then displays and edits the corresponding codes.');
     dom.googleDataPurpose.textContent = tr('Googleアカウント連携は、利用者が選択したSpreadsheetの読み書きと、撮影画像を利用者のGoogle Driveへ保存する目的にのみ使用します。データとアクセストークンは当アプリのサーバーに保存しません。', 'Google Account access is used only to read and update the Spreadsheet selected by the user and save captured images to the user’s Google Drive. Data and access tokens are not stored on our server.');
     dom.homepagePrivacyLink.textContent = tr('プライバシーポリシーを確認する', 'Read the Privacy Policy');
-    dom.dataTransferBtnLabel.textContent = state.entries.length ? tr('データエクスポート', 'Export Data') : tr('データインポート', 'Import Data');
+    dom.importTabBtn.textContent = tr('インポート', 'Import'); dom.exportTabBtn.textContent = tr('エクスポート', 'Export'); updateHeaderTransferButton();
     renderFormatOptions(); renderColumnFormatSettings(); syncOutputModeUI();
     applyInputSettings();
     if (state.currentOutputs.length) renderOutputPage();
