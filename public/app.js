@@ -930,8 +930,27 @@ function initializeEvents() {
   const finishSectionResize = () => { if (!resizingSections) return; resizingSections = false; dom.sectionResizeHandle.classList.remove('is-dragging'); saveSettings(); };
   dom.sectionResizeHandle.addEventListener('pointerup', finishSectionResize); dom.sectionResizeHandle.addEventListener('pointercancel', finishSectionResize); dom.sectionResizeHandle.addEventListener('lostpointercapture', finishSectionResize);
   dom.sectionResizeHandle.addEventListener('keydown', (event) => { if (!['ArrowUp','ArrowDown','Home','End'].includes(event.key)) return; event.preventDefault(); if (event.key === 'Home') applySectionRatio(20); else if (event.key === 'End') applySectionRatio(70); else applySectionRatio(state.cameraHeightVh + (event.key === 'ArrowDown' ? 2 : -2)); saveSettings(); });
+  let navigationGestureStart = null; let navigationGuardUntil = 0; let intentionalNavigationUntil = 0;
+  const armNavigationGuard = () => { navigationGuardUntil = Date.now() + 6000; };
+  document.addEventListener('touchstart', (event) => {
+    if (event.touches.length !== 1) { navigationGestureStart = null; return; }
+    const touch = event.touches[0]; navigationGestureStart = { x:touch.clientX, y:touch.clientY };
+    if (touch.clientX <= 28 || touch.clientX >= window.innerWidth - 28) armNavigationGuard();
+  }, { passive:true, capture:true });
+  document.addEventListener('touchmove', (event) => {
+    if (!navigationGestureStart || event.touches.length !== 1) return;
+    const touch = event.touches[0]; const dx = touch.clientX - navigationGestureStart.x; const dy = touch.clientY - navigationGestureStart.y;
+    if (Math.abs(dx) >= 36 && Math.abs(dx) > Math.abs(dy) * 1.2) armNavigationGuard();
+  }, { passive:true, capture:true });
+  document.addEventListener('touchend', () => { navigationGestureStart = null; }, { passive:true, capture:true }); document.addEventListener('touchcancel', () => { navigationGestureStart = null; }, { passive:true, capture:true });
+  document.addEventListener('wheel', (event) => { if (Math.abs(event.deltaX) >= 30 && Math.abs(event.deltaX) > Math.abs(event.deltaY)) armNavigationGuard(); }, { passive:true, capture:true });
+  document.addEventListener('click', (event) => { if (event.target.closest?.('a[href]')) intentionalNavigationUntil = Date.now() + 2000; }, true);
   window.addEventListener('pagehide', stopCamera);
-  window.addEventListener('beforeunload', (event) => { if (state.dirtyCells.size) event.preventDefault(); });
+  window.addEventListener('beforeunload', (event) => {
+    const gestureNavigation = Date.now() < navigationGuardUntil && Date.now() >= intentionalNavigationUntil;
+    if (!state.dirtyCells.size && !gestureNavigation) return;
+    event.preventDefault(); event.returnValue = '';
+  });
 }
 
 function init() {
