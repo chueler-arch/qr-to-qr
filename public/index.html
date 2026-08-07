@@ -37,7 +37,7 @@
         </div>
         <div class="header-actions"><button class="language-toggle" type="button">EN</button><button id="openImportBtn" class="header-action" type="button">
           <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v11m0 0 4-4m-4 4-4-4M5 15v4h14v-4" /></svg>
-          <span id="dataTransferBtnLabel">データインポート</span>
+          <span id="dataTransferBtnLabel">IMPORT</span>
         </button></div>
       </header>
 
@@ -154,6 +154,7 @@
         <label class="spreadsheet-url-description" for="googleSheetUrl">共有で公開設定したGoogle SpreadsheetのリンクURLを貼ってください。</label>
         <div class="spreadsheet-url-row"><input id="googleSheetUrl" class="text-input" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/..." /><button id="loadGoogleSheetBtn" class="primary-button" type="button">読み込む</button></div>
         <details class="spreadsheet-help"><summary>公開設定とリンクURLの取得手順</summary><ol><li>Google Spreadsheetを開き、右上の「共有」を押します。</li><li>「一般的なアクセス」を「リンクを知っている全員」に変更します。</li><li>権限は「閲覧者」を選択します。</li><li>「リンクをコピー」を押し、上の入力欄へ貼り付けます。</li></ol><p>公開URL方式では閲覧のみ可能です。直接書き込みする場合は「Google Driveから直接取り込む」を使用してください。</p></details>
+        <p class="public-sheet-warning">この方法ではGoogle Spreadsheetへの書き込みはできません。追加・編集したデータは、エクスポートするCSVファイルにのみ反映されます。</p>
       </section>
     </div>
 

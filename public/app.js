@@ -100,7 +100,7 @@ function updateHeaderTransferButton() {
   dom.dataTransferBtnLabel.hidden = false;
   dom.openImportBtn.classList.remove('is-icon-only');
   dom.openImportBtn.setAttribute('aria-label', exportMode ? tr('データエクスポート', 'Export Data') : tr('データインポート', 'Import Data'));
-  dom.dataTransferBtnLabel.textContent = exportMode ? 'EXPORT' : tr('データインポート', 'Import Data');
+  dom.dataTransferBtnLabel.textContent = exportMode ? 'EXPORT' : 'IMPORT';
 }
 
 function renderLinkedText(element, value) {
