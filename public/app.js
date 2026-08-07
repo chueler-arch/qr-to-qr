@@ -97,10 +97,10 @@ function updateSpreadsheetControls() {
 
 function updateHeaderTransferButton() {
   const exportMode = state.entries.length > 0;
-  dom.dataTransferBtnLabel.hidden = exportMode;
-  dom.openImportBtn.classList.toggle('is-icon-only', exportMode);
+  dom.dataTransferBtnLabel.hidden = false;
+  dom.openImportBtn.classList.remove('is-icon-only');
   dom.openImportBtn.setAttribute('aria-label', exportMode ? tr('データエクスポート', 'Export Data') : tr('データインポート', 'Import Data'));
-  if (!exportMode) dom.dataTransferBtnLabel.textContent = tr('データインポート', 'Import Data');
+  dom.dataTransferBtnLabel.textContent = exportMode ? 'EXPORT' : tr('データインポート', 'Import Data');
 }
 
 function renderLinkedText(element, value) {
@@ -818,7 +818,7 @@ function initializeEvents() {
     dom.homepagePurpose.textContent = tr('QRtoQRは、カメラで読み取ったQRコードやバーコードを、CSV・Excel・Google Spreadsheetの登録データと照合し、対応するコードを表示・編集するWebアプリです。', 'QRtoQR is a web app that matches QR codes and barcodes scanned with the camera against imported CSV, Excel, or Google Spreadsheet data, then displays and edits the corresponding codes.');
     dom.googleDataPurpose.textContent = tr('Googleアカウント連携は、利用者が選択したSpreadsheetの読み書きと、撮影画像を利用者のGoogle Driveへ保存する目的にのみ使用します。データとアクセストークンは当アプリのサーバーに保存しません。', 'Google Account access is used only to read and update the Spreadsheet selected by the user and save captured images to the user’s Google Drive. Data and access tokens are not stored on our server.');
     dom.homepagePrivacyLink.textContent = tr('プライバシーポリシーを確認する', 'Read the Privacy Policy');
-    dom.importTabBtn.textContent = tr('インポート', 'Import'); dom.exportTabBtn.textContent = tr('エクスポート', 'Export'); updateHeaderTransferButton();
+    dom.importTabBtn.textContent = tr('インポート', 'Import'); dom.exportTabBtn.textContent = tr('エクスポート', 'Export'); dom.exitAddModeBtn.textContent = tr('終了', 'Exit'); updateHeaderTransferButton();
     renderFormatOptions(); renderColumnFormatSettings(); syncOutputModeUI();
     applyInputSettings();
     if (state.currentOutputs.length) renderOutputPage();
@@ -862,15 +862,15 @@ function initializeEvents() {
   dom.deleteHoldBtn.addEventListener('pointerdown', (event) => { event.preventDefault(); event.stopPropagation(); window.getSelection?.()?.removeAllRanges(); cancelDeleteHold(); dom.deleteHoldBtn.classList.add('is-held'); dom.deleteHoldBtn.setPointerCapture?.(event.pointerId); deleteTimer = window.setTimeout(() => { deleteTimer = null; dom.deleteHoldBtn.classList.remove('is-held'); window.getSelection?.()?.removeAllRanges(); openLayer(dom.deleteConfirmModal); }, 700); });
   dom.deleteHoldBtn.addEventListener('pointerup', cancelDeleteHold); dom.deleteHoldBtn.addEventListener('pointercancel', cancelDeleteHold); dom.deleteHoldBtn.addEventListener('lostpointercapture', cancelDeleteHold); window.addEventListener('blur', cancelDeleteHold);
   dom.confirmDeleteBtn.addEventListener('click', clearCurrentAddCell);
-  let cellHoldTimer = null; let cellHoldStart = null; let suppressCellClick = false;
-  const cancelCellHold = () => { if (cellHoldTimer) window.clearTimeout(cellHoldTimer); cellHoldTimer = null; cellHoldStart = null; };
+  let cellHoldTimer = null; let cellHoldStart = null; let cellHoldLink = null; let suppressCellClick = false;
+  const cancelCellHold = () => { if (cellHoldTimer) window.clearTimeout(cellHoldTimer); cellHoldTimer = null; cellHoldStart = null; cellHoldLink = null; };
   dom.addValueCell.addEventListener('pointerdown', (event) => {
     if (event.button !== 0) return;
-    cancelCellHold(); cellHoldStart = { x:event.clientX, y:event.clientY };
-    cellHoldTimer = window.setTimeout(() => { cellHoldTimer = null; cellHoldStart = null; suppressCellClick = true; state.swipeStartX = null; window.getSelection?.()?.removeAllRanges(); openCellEditor(); }, 650);
+    event.preventDefault(); cancelCellHold(); cellHoldStart = { x:event.clientX, y:event.clientY }; cellHoldLink = event.target.closest?.('a')?.href || null;
+    cellHoldTimer = window.setTimeout(() => { cellHoldTimer = null; cellHoldStart = null; cellHoldLink = null; suppressCellClick = true; state.swipeStartX = null; window.getSelection?.()?.removeAllRanges(); openCellEditor(); }, 650);
   });
   dom.addValueCell.addEventListener('pointermove', (event) => { if (cellHoldStart && Math.hypot(event.clientX - cellHoldStart.x, event.clientY - cellHoldStart.y) > 8) cancelCellHold(); });
-  dom.addValueCell.addEventListener('pointerup', cancelCellHold); dom.addValueCell.addEventListener('pointercancel', cancelCellHold); dom.addValueCell.addEventListener('contextmenu', (event) => event.preventDefault());
+  dom.addValueCell.addEventListener('pointerup', () => { const pending = Boolean(cellHoldTimer); const link = cellHoldLink; cancelCellHold(); if (pending && link) window.open(link, '_blank', 'noopener,noreferrer'); }); dom.addValueCell.addEventListener('pointercancel', cancelCellHold); dom.addValueCell.addEventListener('contextmenu', (event) => event.preventDefault());
   dom.addValueCell.addEventListener('click', (event) => { if (suppressCellClick) { event.preventDefault(); event.stopPropagation(); suppressCellClick = false; } }, true);
   dom.saveCellTextBtn.addEventListener('click', saveCellEditor); dom.deleteCellTextBtn.addEventListener('click', deleteCellEditorValue);
   dom.zoomControl.addEventListener('input', () => { state.zoom = Number(dom.zoomControl.value); dom.zoomValue.textContent = `${state.zoom.toFixed(1)}×`; saveSettings(); applyCameraControl('zoom', state.zoom); });

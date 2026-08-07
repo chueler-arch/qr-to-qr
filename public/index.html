@@ -109,7 +109,7 @@
           <div class="add-mode-heading"><p class="add-mode-guide">追加する列を左右にスワイプし、カメラでコードを読み取ってください</p></div>
           <table class="add-data-table"><thead><tr><th id="addKeyTitle">A列</th><th><span id="addValueTitle" class="add-value-slide">B列</span></th></tr></thead><tbody><tr><td id="addKeyValue"></td><td id="addValueCell"><span id="addColumnValue" class="add-value-slide is-blank">空白</span></td></tr></tbody></table>
           <div id="addColumnPager" class="output-pager" aria-label="追加先の列"></div>
-          <button id="exitAddModeBtn" class="exit-add-mode" type="button">終了</button>
+          <button id="exitAddModeBtn" class="exit-add-mode" type="button" translate="no">終了</button>
           <div id="captureControl" class="capture-control" hidden><button id="capturePhotoBtn" class="capture-photo-button" type="button" aria-label="カメラ撮影"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 6 10 4h4l1.5 2H19a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h3.5ZM12 16a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7Z"/></svg></button><small>押すとカメラの画像を保存します</small></div>
         </div>
         <div id="overwriteControl" class="overwrite-control" hidden><button id="overwriteHoldBtn" class="overwrite-hold-button" type="button">上書き</button><small>押している間だけ、バーコードを上書き入力します。</small></div>
@@ -136,7 +136,7 @@
         </div>
         <div class="settings-tabs transfer-tabs" role="tablist" translate="no"><button id="importTabBtn" class="settings-tab is-active" type="button" data-transfer-tab="import" role="tab">インポート</button><button id="exportTabBtn" class="settings-tab" type="button" data-transfer-tab="export" role="tab" disabled>エクスポート</button></div>
         <div id="importPanel" class="import-choice-panel">
-        <button id="selectGoogleSheetBtn" class="import-choice-button drive-choice" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3h7L21 12l-3.5 6H6.5L3 12 8.5 3Zm0 0L14 12m7 0H14m3.5 6L14 12M6.5 18 10 12M3 12h7"/></svg><span><strong>Google Driveから直接取り込む</strong><small>Googleアカウントに接続してSpreadsheetを選択します</small></span></button>
+        <button id="selectGoogleSheetBtn" class="import-choice-button drive-choice" type="button" title="Google Driveから直接取り込む"><img class="google-drive-logo" src="https://www.gstatic.com/images/branding/productlogos/drive_2026/v2/web-64dp/logo_drive_2026_color_2x_web_64dp.png" alt="Google Drive"><span><strong>Google Driveから直接取り込む</strong><small>Googleアカウントに接続してSpreadsheetを選択します</small></span></button>
         <button id="openFileImportOptionsBtn" class="import-choice-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6l2 2h8v14H4V4Zm8 6v6m0 0 3-3m-3 3-3-3"/></svg><span><strong>ファイルを選択する</strong><small>端末内のファイル、または公開Spreadsheetを読み込みます</small></span></button>
         <p id="selectedSheetName" class="selected-sheet-name">Googleアカウントに接続されていません。</p>
         <div id="importLoading" class="import-loading" role="status" aria-live="polite" hidden><span class="import-loading-spinner" aria-hidden="true"></span><strong>データを読み込んでいます</strong></div>
