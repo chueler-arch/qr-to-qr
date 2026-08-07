@@ -899,14 +899,22 @@ function initializeEvents() {
   let cellHoldTimer = null; let cellHoldStart = null; let cellHoldLink = null; let suppressCellClick = false;
   const cancelCellHold = () => { if (cellHoldTimer) window.clearTimeout(cellHoldTimer); cellHoldTimer = null; cellHoldStart = null; cellHoldLink = null; };
   const enableCellLongPress = (element, target) => {
-    element.addEventListener('pointerdown', (event) => {
-      if (event.button !== 0) return;
-      event.preventDefault(); cancelCellHold(); cellHoldStart = { x:event.clientX, y:event.clientY }; cellHoldLink = event.target.closest?.('a')?.href || null;
+    const beginHold = (x, y, link) => {
+      cancelCellHold(); cellHoldStart = { x, y }; cellHoldLink = link || null;
       cellHoldTimer = window.setTimeout(() => { cellHoldTimer = null; cellHoldStart = null; cellHoldLink = null; suppressCellClick = true; state.swipeStartX = null; window.getSelection?.()?.removeAllRanges(); openCellEditor(target); }, 650);
+    };
+    const finishHold = () => { const pending = Boolean(cellHoldTimer); const link = cellHoldLink; cancelCellHold(); if (pending && link) window.open(link, '_blank', 'noopener,noreferrer'); };
+    element.addEventListener('pointerdown', (event) => {
+      if (event.pointerType === 'touch') return;
+      if (event.button !== 0) return;
+      event.preventDefault(); beginHold(event.clientX, event.clientY, event.target.closest?.('a')?.href);
     });
     element.addEventListener('pointermove', (event) => { if (cellHoldStart && Math.hypot(event.clientX - cellHoldStart.x, event.clientY - cellHoldStart.y) > 8) cancelCellHold(); });
-    element.addEventListener('pointerup', () => { const pending = Boolean(cellHoldTimer); const link = cellHoldLink; cancelCellHold(); if (pending && link) window.open(link, '_blank', 'noopener,noreferrer'); });
-    element.addEventListener('pointercancel', cancelCellHold); element.addEventListener('contextmenu', (event) => event.preventDefault());
+    element.addEventListener('pointerup', (event) => { if (event.pointerType !== 'touch') finishHold(); });
+    element.addEventListener('pointercancel', (event) => { if (event.pointerType !== 'touch') cancelCellHold(); }); element.addEventListener('contextmenu', (event) => event.preventDefault());
+    element.addEventListener('touchstart', (event) => { if (event.touches.length !== 1) return; event.preventDefault(); const touch = event.touches[0]; beginHold(touch.clientX, touch.clientY, event.target.closest?.('a')?.href); }, { passive:false });
+    element.addEventListener('touchmove', (event) => { event.preventDefault(); const touch = event.touches[0]; if (touch && cellHoldStart && Math.hypot(touch.clientX - cellHoldStart.x, touch.clientY - cellHoldStart.y) > 8) cancelCellHold(); }, { passive:false });
+    element.addEventListener('touchend', (event) => { event.preventDefault(); finishHold(); }, { passive:false }); element.addEventListener('touchcancel', cancelCellHold, { passive:true });
     element.addEventListener('click', (event) => { if (suppressCellClick) { event.preventDefault(); event.stopPropagation(); suppressCellClick = false; } }, true);
   };
   enableCellLongPress(dom.addValueCell, 'value'); enableCellLongPress(dom.addTitleCell, 'title');
