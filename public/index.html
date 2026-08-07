@@ -135,22 +135,26 @@
           <button class="icon-button close-button dark-button" data-close="importModal" type="button" aria-label="閉じる">×</button>
         </div>
         <div class="settings-tabs transfer-tabs" role="tablist"><button class="settings-tab is-active" type="button" data-transfer-tab="import" role="tab">インポート</button><button id="exportTabBtn" class="settings-tab" type="button" data-transfer-tab="export" role="tab" disabled>エクスポート</button></div>
-        <div id="importPanel"><label class="file-drop" for="fileInput">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L8 8m4-4 4 4M4 15v5h16v-5" /></svg>
-          <strong>Excel / CSVファイルを選択</strong>
-          <span>.csv, .xlsx, .xls, .xlsm</span>
-          <input id="fileInput" type="file" accept=".csv,.xlsx,.xls,.xlsm" />
-        </label>
-        <div class="divider"><span>または</span></div>
-        <button id="selectGoogleSheetBtn" class="google-connect-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 2h9l5 5v15H6V2Zm8 1.5V8h4.5M9 12h8M9 16h8M9 20h8"/></svg>Google Spreadsheetを選択</button>
+        <div id="importPanel" class="import-choice-panel">
+        <button id="selectGoogleSheetBtn" class="import-choice-button drive-choice" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8.5 3h7L21 12l-3.5 6H6.5L3 12 8.5 3Zm0 0L14 12m7 0H14m3.5 6L14 12M6.5 18 10 12M3 12h7"/></svg><span><strong>Google Driveから直接取り込む</strong><small>Googleアカウントに接続してSpreadsheetを選択します</small></span></button>
+        <button id="openFileImportOptionsBtn" class="import-choice-button" type="button"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h6l2 2h8v14H4V4Zm8 6v6m0 0 3-3m-3 3-3-3"/></svg><span><strong>ファイルを選択する</strong><small>端末内のファイル、または公開Spreadsheetを読み込みます</small></span></button>
         <p id="selectedSheetName" class="selected-sheet-name">Googleアカウントに接続されていません。</p>
-        <div class="divider"><span>または公開URLから読み込む</span></div>
-        <label class="field-label" for="googleSheetUrl">公開Google Spreadsheet</label>
-        <input id="googleSheetUrl" class="text-input" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/..." />
-        <button id="loadGoogleSheetBtn" class="primary-button" type="button">Spreadsheetを読み込む</button>
         <div id="importLoading" class="import-loading" role="status" aria-live="polite" hidden><span class="import-loading-spinner" aria-hidden="true"></span><strong>データを読み込んでいます</strong></div>
         <p id="statusText" class="import-status" aria-live="polite">A列を検索キー、B列以降を表示値として読み込みます。1行目はタイトルとして使用します。</p></div>
         <div id="exportPanel" hidden><button id="exportCsvBtn" class="file-export-button" type="button">CSVファイルをエクスポート</button><div class="divider"><span>または</span></div><button id="selectExportSheetBtn" class="google-connect-button" type="button">保存先のGoogle Spreadsheetを選択</button><p id="exportSheetName" class="selected-sheet-name">Spreadsheetが選択されていません。</p><button id="overwriteSheetBtn" class="primary-button" type="button">今すぐ保存</button><p id="exportStatus" class="import-status" aria-live="polite">Googleアカウントで接続すると、変更したセルだけを保存できます。</p></div>
+      </section>
+    </div>
+
+    <div id="fileImportModal" class="modal-layer" aria-hidden="true">
+      <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="fileImportTitle">
+        <div class="panel-title-row"><div><span class="eyebrow">IMPORT</span><h2 id="fileImportTitle">ファイルを選択する</h2></div><button class="icon-button close-button dark-button" data-close="fileImportModal" type="button" aria-label="閉じる">×</button></div>
+        <label class="file-drop" for="fileInput"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L8 8m4-4 4 4M4 15v5h16v-5" /></svg><strong>Excel / CSVファイルを選択</strong><span>.csv, .xlsx, .xls, .xlsm</span><input id="fileInput" type="file" accept=".csv,.xlsx,.xls,.xlsm" /></label>
+        <div class="divider"><span>または</span></div>
+        <h3 class="public-sheet-title">Google Spreadsheetを選択</h3>
+        <details class="spreadsheet-help"><summary>公開設定とリンクURLの取得手順</summary><ol><li>Google Spreadsheetを開き、右上の「共有」を押します。</li><li>「一般的なアクセス」を「リンクを知っている全員」に変更します。</li><li>権限は「閲覧者」を選択します。</li><li>「リンクをコピー」を押し、下の入力欄へ貼り付けます。</li></ol><p>公開URL方式では閲覧のみ可能です。直接書き込みする場合は「Google Driveから直接取り込む」を使用してください。</p></details>
+        <label class="field-label" for="googleSheetUrl">Google SpreadsheetのリンクURL</label>
+        <input id="googleSheetUrl" class="text-input" type="url" inputmode="url" placeholder="https://docs.google.com/spreadsheets/..." />
+        <button id="loadGoogleSheetBtn" class="primary-button" type="button">Spreadsheetを読み込む</button>
       </section>
     </div>
 

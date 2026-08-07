@@ -17,7 +17,7 @@ const dom = {
   outputStage: byId('outputStage'), barcodeCanvas: byId('barcodeCanvas'), valueText: byId('valueText'),
   outputTitle: byId('outputTitle'), outputPager: byId('outputPager'), barcodeWarning: byId('barcodeWarning'),
   addModeBtn: byId('addModeBtn'), exitAddModeBtn: byId('exitAddModeBtn'), addModeStage: byId('addModeStage'), addKeyTitle: byId('addKeyTitle'), addValueTitle: byId('addValueTitle'), addKeyValue: byId('addKeyValue'), addColumnValue: byId('addColumnValue'), addColumnPager: byId('addColumnPager'), captureControl: byId('captureControl'), capturePhotoBtn: byId('capturePhotoBtn'), overwriteControl: byId('overwriteControl'), overwriteHoldBtn: byId('overwriteHoldBtn'), deleteControl: byId('deleteControl'), deleteHoldBtn: byId('deleteHoldBtn'), deleteConfirmModal: byId('deleteConfirmModal'), confirmDeleteBtn: byId('confirmDeleteBtn'),
-  importModal: byId('importModal'), barcodeSettingsModal: byId('barcodeSettingsModal'), fileInput: byId('fileInput'),
+  importModal: byId('importModal'), fileImportModal: byId('fileImportModal'), openFileImportOptionsBtn: byId('openFileImportOptionsBtn'), barcodeSettingsModal: byId('barcodeSettingsModal'), fileInput: byId('fileInput'),
   googleSheetUrl: byId('googleSheetUrl'), loadGoogleSheetBtn: byId('loadGoogleSheetBtn'), selectGoogleSheetBtn: byId('selectGoogleSheetBtn'), selectedSheetName: byId('selectedSheetName'), importLoading: byId('importLoading'), statusText: byId('statusText'),
   outputType: byId('outputType'), outputSize: byId('outputSize'), formatOptions: byId('formatOptions'), formatHelp: byId('formatHelp'),
   uniformFormatSettings: byId('uniformFormatSettings'), columnFormatSettings: byId('columnFormatSettings'), columnFormatList: byId('columnFormatList'), autoDetectFormatsBtn: byId('autoDetectFormatsBtn'), openImportBtn: byId('openImportBtn'),
@@ -83,9 +83,16 @@ function setImportLoading(isLoading) {
   dom.importLoading.querySelector('strong').textContent = tr('データを読み込んでいます', 'Loading data');
   dom.importPanel.setAttribute('aria-busy', String(isLoading));
   dom.fileInput.disabled = isLoading;
+  dom.openFileImportOptionsBtn.disabled = isLoading;
   dom.selectGoogleSheetBtn.disabled = isLoading;
   dom.loadGoogleSheetBtn.disabled = isLoading;
   dom.googleSheetUrl.disabled = isLoading;
+}
+
+function updateSpreadsheetControls() {
+  const directlyConnected = Boolean(state.sourceSpreadsheetId && state.selectedSpreadsheetId === state.sourceSpreadsheetId);
+  dom.overwriteSheetBtn.hidden = directlyConnected;
+  if (directlyConnected) dom.exportStatus.textContent = tr('変更は約1秒後にGoogle Spreadsheetへ自動保存されます。', 'Changes are saved to Google Spreadsheet automatically after about one second.');
 }
 
 function columnName(index) {
@@ -110,6 +117,7 @@ function updateEntries(rows, options = {}) {
     dom.selectedSheetName.textContent = tr('Googleアカウントに接続されていません。', 'Not connected to a Google Account.');
     dom.exportSheetName.textContent = tr('Spreadsheetが選択されていません。', 'No Spreadsheet selected.');
   }
+  updateSpreadsheetControls();
   updateSyncStatus('idle');
   const titles = normalizedRows[0]?.slice(1) || [];
   state.rawRows = normalizedRows;
@@ -387,6 +395,7 @@ function applyInputSettings() {
 
 async function captureCameraImage() {
   if (!state.addMode || currentAddCell() || !state.inputSettings.cameraCapture || dom.video.readyState < 2) return;
+  dom.capturePhotoBtn.disabled = true;
   const now = new Date();
   const pad = (value, length = 2) => String(value).padStart(length, '0');
   const timestamp = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}${pad(now.getMilliseconds(), 3)}`;
@@ -395,10 +404,23 @@ async function captureCameraImage() {
   const filename = `${safeKey}_${timestamp}.png`;
   const canvas = document.createElement('canvas'); canvas.width = dom.video.videoWidth; canvas.height = dom.video.videoHeight;
   canvas.getContext('2d').drawImage(dom.video, 0, 0, canvas.width, canvas.height);
-  const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
-  if (!blob) return;
-  const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
-  addScannedValue(filename);
+  try {
+    const blob = await new Promise((resolve) => canvas.toBlob(resolve, 'image/png'));
+    if (!blob) throw new Error(tr('画像を作成できませんでした。', 'The image could not be created.'));
+    if (state.selectedSpreadsheetId) {
+      dom.scanResult.textContent = tr('Google Driveへ画像を保存しています…', 'Saving image to Google Drive…');
+      await requestGoogleTokenPromise();
+      const driveFile = await uploadImageToGoogleDrive(blob, filename);
+      addScannedValue(driveFile.webViewLink || `https://drive.google.com/file/d/${driveFile.id}/view`);
+      dom.scanResult.textContent = tr('Google Driveへ画像を保存し、リンクをセルへ追加しました', 'Saved the image to Google Drive and added its link to the cell');
+    } else {
+      const url = URL.createObjectURL(blob); const link = document.createElement('a'); link.href = url; link.download = filename; link.click(); window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+      addScannedValue(filename);
+    }
+  } catch (error) {
+    console.error(error);
+    dom.scanResult.textContent = tr(`画像を保存できませんでした：${error.message}`, `Could not save image: ${error.message}`);
+  } finally { dom.capturePhotoBtn.disabled = false; }
 }
 
 function addScannedValue(rawValue) {
@@ -602,8 +624,25 @@ function requestGoogleToken(callback) {
   state.googleTokenClient.requestAccessToken({ prompt: state.googleAccessToken ? '' : 'consent' });
 }
 
+function requestGoogleTokenPromise() {
+  return new Promise((resolve, reject) => requestGoogleToken((error) => (error ? reject(error) : resolve())));
+}
+
 function googleApiFetch(url, options = {}) {
   return fetch(url, { ...options, headers:{ Authorization:`Bearer ${state.googleAccessToken}`, ...(options.headers || {}) } });
+}
+
+async function uploadImageToGoogleDrive(blob, filename) {
+  const boundary = `qrtoqr_${Date.now()}_${Math.random().toString(16).slice(2)}`;
+  const metadata = JSON.stringify({ name:filename, mimeType:'image/png', description:'Created by QRtoQR' });
+  const body = new Blob([
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metadata}\r\n`,
+    `--${boundary}\r\nContent-Type: image/png\r\n\r\n`, blob, `\r\n--${boundary}--`,
+  ], { type:`multipart/related; boundary=${boundary}` });
+  const response = await googleApiFetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&fields=id%2CwebViewLink', { method:'POST', headers:{ 'Content-Type':`multipart/related; boundary=${boundary}` }, body });
+  const result = await response.json();
+  if (!response.ok) throw new Error(result.error?.message || `HTTP ${response.status}`);
+  return result;
 }
 
 function selectGoogleSpreadsheet(purpose) {
@@ -629,6 +668,7 @@ async function handleGooglePicker(data) {
     if (state.selectedSpreadsheetId !== state.sourceSpreadsheetId) markAllCellsDirty();
     dom.exportStatus.textContent = tr('上書き先を選択しました。「今すぐ保存」を押してください。', 'Destination selected. Press Save Now.');
     updateSyncStatus('pending');
+    updateSpreadsheetControls();
   }
 }
 
@@ -731,7 +771,7 @@ function initializeEvents() {
   document.addEventListener('qrtoqr-language-change', () => {
     dom.homepageDescriptionTitle.textContent = tr('QRtoQRについて', 'About QRtoQR');
     dom.homepagePurpose.textContent = tr('QRtoQRは、カメラで読み取ったQRコードやバーコードを、CSV・Excel・Google Spreadsheetの登録データと照合し、対応するコードを表示・編集するWebアプリです。', 'QRtoQR is a web app that matches QR codes and barcodes scanned with the camera against imported CSV, Excel, or Google Spreadsheet data, then displays and edits the corresponding codes.');
-    dom.googleDataPurpose.textContent = tr('Googleアカウント連携は、利用者が選択したSpreadsheetのデータを読み取り、変更したセルを書き戻す目的にのみ使用します。データとアクセストークンは当アプリのサーバーに保存しません。', 'Google Account access is used only to read the Spreadsheet selected by the user and write back changed cells. Spreadsheet data and access tokens are not stored on our server.');
+    dom.googleDataPurpose.textContent = tr('Googleアカウント連携は、利用者が選択したSpreadsheetの読み書きと、撮影画像を利用者のGoogle Driveへ保存する目的にのみ使用します。データとアクセストークンは当アプリのサーバーに保存しません。', 'Google Account access is used only to read and update the Spreadsheet selected by the user and save captured images to the user’s Google Drive. Data and access tokens are not stored on our server.');
     dom.homepagePrivacyLink.textContent = tr('プライバシーポリシーを確認する', 'Read the Privacy Policy');
     dom.dataTransferBtnLabel.textContent = state.entries.length ? tr('データエクスポート', 'Export Data') : tr('データインポート', 'Import Data');
     renderFormatOptions(); renderColumnFormatSettings(); syncOutputModeUI();
@@ -739,8 +779,9 @@ function initializeEvents() {
     if (state.currentOutputs.length) renderOutputPage();
     else if (state.entries.length) clearOutput(tr('コードをスキャンしてください', 'Scan a code'));
   });
-  dom.fileInput.addEventListener('change', (event) => importFromFile(event.target.files[0]));
-  dom.loadGoogleSheetBtn.addEventListener('click', importFromGoogleSheet);
+  dom.openFileImportOptionsBtn.addEventListener('click', () => openLayer(dom.fileImportModal));
+  dom.fileInput.addEventListener('change', (event) => { closeLayer(dom.fileImportModal); importFromFile(event.target.files[0]); });
+  dom.loadGoogleSheetBtn.addEventListener('click', () => { closeLayer(dom.fileImportModal); importFromGoogleSheet(); });
   dom.selectGoogleSheetBtn.addEventListener('click', () => selectGoogleSpreadsheet('import'));
   dom.selectExportSheetBtn.addEventListener('click', () => selectGoogleSpreadsheet('export'));
   document.querySelectorAll('[data-transfer-tab]').forEach((button) => button.addEventListener('click', () => setTransferTab(button.dataset.transferTab)));

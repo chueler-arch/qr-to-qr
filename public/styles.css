@@ -31,3 +31,15 @@
 .import-loading-spinner{width:20px;height:20px;flex:0 0 auto;border:3px solid #bdd8ee;border-top-color:#1769aa;border-radius:50%;animation:spin .75s linear infinite}
 .import-loading strong{font-size:.72rem}
 #importPanel[aria-busy="true"] button:disabled,#importPanel[aria-busy="true"] input:disabled{cursor:wait;opacity:.6}
+
+.import-choice-panel{display:grid;gap:10px;margin-top:18px}
+.import-choice-button{display:flex;align-items:center;gap:13px;width:100%;padding:15px;border:1px solid #c8d5e3;border-radius:13px;background:#fff;color:var(--ink);text-align:left;cursor:pointer;transition:border-color .2s,background .2s,transform .2s}
+.import-choice-button:hover,.import-choice-button:focus-visible{border-color:#238fe8;background:#f3f9ff;transform:translateY(-1px)}
+.import-choice-button svg{width:30px;height:30px;flex:0 0 auto;fill:none;stroke:#1769aa;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+.import-choice-button span{display:grid;gap:3px}.import-choice-button strong{font-size:.8rem}.import-choice-button small{color:var(--muted);font-size:.63rem;line-height:1.4}
+.drive-choice{border-color:#afd0b9;background:#f4fbf6}.drive-choice svg{stroke:#188038}
+.public-sheet-title{margin:0;font-size:.84rem}
+.spreadsheet-help{margin:9px 0 13px;border:1px solid var(--line);border-radius:10px;background:#f8fafc;color:#425269;font-size:.69rem;line-height:1.55}
+.spreadsheet-help summary{padding:10px 12px;color:#225a94;font-weight:850;cursor:pointer}
+.spreadsheet-help ol{margin:0;padding:0 18px 8px 34px}.spreadsheet-help p{margin:0;padding:0 12px 11px;color:var(--muted)}
+.capture-photo-button:disabled{cursor:wait;opacity:.6}
