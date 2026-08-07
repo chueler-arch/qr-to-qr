@@ -2,7 +2,7 @@ const state = {
   entries: [], columns: [], rawRows: [], outputType: 'CODE128', outputMode: 'uniform', columnFormats: {}, outputSize: 240, zoom: 1, focus: 0.5,
   inputSettings: { addMode: true, barcodeInput: true, overwrite: true, cameraCapture: true },
   facingMode: 'environment', stream: null, track: null, scanTimer: null,
-  lastCode: '', currentOutputs: [], outputIndex: 0, currentEntry: null, keyTitle: 'A列', addMode: false, addColumnIndex: 0, overwriteHeld: false, cameraStarting: false, swipeStartX: null,
+  lastCode: '', currentOutputs: [], outputIndex: 0, currentEntry: null, keyTitle: 'A列', addMode: false, addColumnIndex: 0, cellEditTarget: 'value', overwriteHeld: false, cameraStarting: false, swipeStartX: null,
   googleAccessToken: '', googleTokenExpiresAt: 0, googleTokenClient: null, googlePickerReady: false, selectedSpreadsheetId: '', selectedSpreadsheetName: '', selectedSheetTitle: '', sourceSpreadsheetId: '', googlePickerPurpose: 'import',
   dirtyCells: new Map(), autoSaveTimer: null, autoSaveInFlight: false, dirtyVersion: 0, zxingReader: null, scanBusy: false,
 };
@@ -16,7 +16,7 @@ const dom = {
   homepageDescriptionTitle: byId('homepageDescriptionTitle'), homepagePurpose: byId('homepagePurpose'), googleDataPurpose: byId('googleDataPurpose'), homepagePrivacyLink: byId('homepagePrivacyLink'),
   outputStage: byId('outputStage'), barcodeCanvas: byId('barcodeCanvas'), valueText: byId('valueText'),
   outputTitle: byId('outputTitle'), outputPager: byId('outputPager'), barcodeWarning: byId('barcodeWarning'),
-  addModeBtn: byId('addModeBtn'), exitAddModeBtn: byId('exitAddModeBtn'), addModeStage: byId('addModeStage'), addKeyTitle: byId('addKeyTitle'), addValueTitle: byId('addValueTitle'), addKeyValue: byId('addKeyValue'), addValueCell: byId('addValueCell'), addColumnValue: byId('addColumnValue'), addColumnPager: byId('addColumnPager'), captureControl: byId('captureControl'), capturePhotoBtn: byId('capturePhotoBtn'), overwriteControl: byId('overwriteControl'), overwriteHoldBtn: byId('overwriteHoldBtn'), deleteControl: byId('deleteControl'), deleteHoldBtn: byId('deleteHoldBtn'), deleteConfirmModal: byId('deleteConfirmModal'), confirmDeleteBtn: byId('confirmDeleteBtn'), cellEditModal: byId('cellEditModal'), cellEditLabel: byId('cellEditLabel'), cellEditInput: byId('cellEditInput'), deleteCellTextBtn: byId('deleteCellTextBtn'), saveCellTextBtn: byId('saveCellTextBtn'),
+  addModeBtn: byId('addModeBtn'), exitAddModeBtn: byId('exitAddModeBtn'), addModeStage: byId('addModeStage'), addKeyTitle: byId('addKeyTitle'), addTitleCell: byId('addTitleCell'), addValueTitle: byId('addValueTitle'), addKeyValue: byId('addKeyValue'), addValueCell: byId('addValueCell'), addColumnValue: byId('addColumnValue'), addColumnPager: byId('addColumnPager'), captureControl: byId('captureControl'), capturePhotoBtn: byId('capturePhotoBtn'), overwriteControl: byId('overwriteControl'), overwriteHoldBtn: byId('overwriteHoldBtn'), deleteControl: byId('deleteControl'), deleteHoldBtn: byId('deleteHoldBtn'), deleteConfirmModal: byId('deleteConfirmModal'), confirmDeleteBtn: byId('confirmDeleteBtn'), cellEditModal: byId('cellEditModal'), cellEditLabel: byId('cellEditLabel'), cellEditInput: byId('cellEditInput'), deleteCellTextBtn: byId('deleteCellTextBtn'), saveCellTextBtn: byId('saveCellTextBtn'),
   importModal: byId('importModal'), fileImportModal: byId('fileImportModal'), openFileImportOptionsBtn: byId('openFileImportOptionsBtn'), barcodeSettingsModal: byId('barcodeSettingsModal'), fileInput: byId('fileInput'),
   googleSheetUrl: byId('googleSheetUrl'), loadGoogleSheetBtn: byId('loadGoogleSheetBtn'), selectGoogleSheetBtn: byId('selectGoogleSheetBtn'), selectedSheetName: byId('selectedSheetName'), importLoading: byId('importLoading'), statusText: byId('statusText'),
   outputType: byId('outputType'), outputSize: byId('outputSize'), formatOptions: byId('formatOptions'), formatHelp: byId('formatHelp'),
@@ -474,11 +474,14 @@ function clearCurrentAddCell() {
   dom.scanResult.textContent = tr(`${meta.column}列をブランクにしました`, `Cleared column ${meta.column}`);
 }
 
-function openCellEditor() {
+function openCellEditor(target = 'value') {
   if (!state.addMode || !state.currentEntry) return;
   const column = state.columns[state.addColumnIndex];
-  const value = currentAddCell();
-  dom.cellEditLabel.textContent = tr(`${column.title || column.column} (${column.column}列) の値`, `${column.title || column.column} (Column ${column.column}) value`);
+  state.cellEditTarget = target;
+  const value = target === 'title' ? (state.rawRows[0]?.[state.addColumnIndex + 1] || '') : currentAddCell();
+  dom.cellEditLabel.textContent = target === 'title'
+    ? tr(`${column.column}列のタイトル`, `Column ${column.column} title`)
+    : tr(`${column.title || column.column} (${column.column}列) の値`, `${column.title || column.column} (Column ${column.column}) value`);
   dom.cellEditInput.value = value;
   dom.deleteCellTextBtn.disabled = !value;
   openLayer(dom.cellEditModal);
@@ -487,6 +490,7 @@ function openCellEditor() {
 
 function saveCellEditor() {
   const value = dom.cellEditInput.value.trim();
+  if (state.cellEditTarget === 'title') { updateCurrentColumnTitle(value); closeLayer(dom.cellEditModal); return; }
   if (!value) {
     if (currentAddCell()) clearCurrentAddCell();
     else closeLayer(dom.cellEditModal);
@@ -497,8 +501,22 @@ function saveCellEditor() {
 }
 
 function deleteCellEditorValue() {
+  if (state.cellEditTarget === 'title') { updateCurrentColumnTitle(''); closeLayer(dom.cellEditModal); return; }
   if (currentAddCell()) clearCurrentAddCell();
   else closeLayer(dom.cellEditModal);
+}
+
+function updateCurrentColumnTitle(title) {
+  if (!state.currentEntry || !state.columns[state.addColumnIndex]) return;
+  const column = state.columns[state.addColumnIndex];
+  const columnIndex = state.addColumnIndex + 1;
+  if (!state.rawRows[0]) state.rawRows[0] = [];
+  state.rawRows[0][columnIndex] = title;
+  column.title = title || `${column.column}列`;
+  state.entries.forEach((entry) => entry.outputs.forEach((output) => { if (output.column === column.column) output.title = column.title; }));
+  markCellDirty(0, columnIndex, title);
+  renderColumnFormatSettings(); renderAddMode(); saveSettings();
+  dom.scanResult.textContent = title ? tr(`${column.column}列のタイトルを変更しました`, `Updated the title of column ${column.column}`) : tr(`${column.column}列のタイトルを削除しました`, `Deleted the title of column ${column.column}`);
 }
 
 function stopCamera() {
@@ -864,14 +882,18 @@ function initializeEvents() {
   dom.confirmDeleteBtn.addEventListener('click', clearCurrentAddCell);
   let cellHoldTimer = null; let cellHoldStart = null; let cellHoldLink = null; let suppressCellClick = false;
   const cancelCellHold = () => { if (cellHoldTimer) window.clearTimeout(cellHoldTimer); cellHoldTimer = null; cellHoldStart = null; cellHoldLink = null; };
-  dom.addValueCell.addEventListener('pointerdown', (event) => {
-    if (event.button !== 0) return;
-    event.preventDefault(); cancelCellHold(); cellHoldStart = { x:event.clientX, y:event.clientY }; cellHoldLink = event.target.closest?.('a')?.href || null;
-    cellHoldTimer = window.setTimeout(() => { cellHoldTimer = null; cellHoldStart = null; cellHoldLink = null; suppressCellClick = true; state.swipeStartX = null; window.getSelection?.()?.removeAllRanges(); openCellEditor(); }, 650);
-  });
-  dom.addValueCell.addEventListener('pointermove', (event) => { if (cellHoldStart && Math.hypot(event.clientX - cellHoldStart.x, event.clientY - cellHoldStart.y) > 8) cancelCellHold(); });
-  dom.addValueCell.addEventListener('pointerup', () => { const pending = Boolean(cellHoldTimer); const link = cellHoldLink; cancelCellHold(); if (pending && link) window.open(link, '_blank', 'noopener,noreferrer'); }); dom.addValueCell.addEventListener('pointercancel', cancelCellHold); dom.addValueCell.addEventListener('contextmenu', (event) => event.preventDefault());
-  dom.addValueCell.addEventListener('click', (event) => { if (suppressCellClick) { event.preventDefault(); event.stopPropagation(); suppressCellClick = false; } }, true);
+  const enableCellLongPress = (element, target) => {
+    element.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      event.preventDefault(); cancelCellHold(); cellHoldStart = { x:event.clientX, y:event.clientY }; cellHoldLink = event.target.closest?.('a')?.href || null;
+      cellHoldTimer = window.setTimeout(() => { cellHoldTimer = null; cellHoldStart = null; cellHoldLink = null; suppressCellClick = true; state.swipeStartX = null; window.getSelection?.()?.removeAllRanges(); openCellEditor(target); }, 650);
+    });
+    element.addEventListener('pointermove', (event) => { if (cellHoldStart && Math.hypot(event.clientX - cellHoldStart.x, event.clientY - cellHoldStart.y) > 8) cancelCellHold(); });
+    element.addEventListener('pointerup', () => { const pending = Boolean(cellHoldTimer); const link = cellHoldLink; cancelCellHold(); if (pending && link) window.open(link, '_blank', 'noopener,noreferrer'); });
+    element.addEventListener('pointercancel', cancelCellHold); element.addEventListener('contextmenu', (event) => event.preventDefault());
+    element.addEventListener('click', (event) => { if (suppressCellClick) { event.preventDefault(); event.stopPropagation(); suppressCellClick = false; } }, true);
+  };
+  enableCellLongPress(dom.addValueCell, 'value'); enableCellLongPress(dom.addTitleCell, 'title');
   dom.saveCellTextBtn.addEventListener('click', saveCellEditor); dom.deleteCellTextBtn.addEventListener('click', deleteCellEditorValue);
   dom.zoomControl.addEventListener('input', () => { state.zoom = Number(dom.zoomControl.value); dom.zoomValue.textContent = `${state.zoom.toFixed(1)}×`; saveSettings(); applyCameraControl('zoom', state.zoom); });
   dom.focusControl.addEventListener('input', () => { state.focus = Number(dom.focusControl.value); dom.focusValue.textContent = state.focus.toFixed(2); saveSettings(); applyCameraControl('focusDistance', state.focus); });
