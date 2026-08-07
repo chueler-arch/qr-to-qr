@@ -1,5 +1,5 @@
 const state = {
-  entries: [], columns: [], rawRows: [], outputType: 'CODE128', outputMode: 'uniform', columnFormats: {}, outputSize: 240, zoom: 1, focus: 0.5,
+  entries: [], columns: [], rawRows: [], outputType: 'CODE128', outputMode: 'uniform', columnFormats: {}, outputSize: 240, zoom: 1, focus: 0.5, cameraHeightVh: 45,
   inputSettings: { addMode: true, barcodeInput: true, overwrite: true, cameraCapture: true },
   facingMode: 'environment', stream: null, track: null, scanTimer: null,
   lastCode: '', currentOutputs: [], outputIndex: 0, currentEntry: null, keyTitle: 'A列', addMode: false, addColumnIndex: 0, cellEditTarget: 'value', overwriteHeld: false, cameraStarting: false, swipeStartX: null,
@@ -9,6 +9,7 @@ const state = {
 
 const byId = (id) => document.getElementById(id);
 const dom = {
+  appShell: document.querySelector('.app-shell'), sectionResizeHandle: byId('sectionResizeHandle'),
   video: byId('video'), cameraPlaceholder: byId('cameraPlaceholder'), retryCameraBtn: byId('retryCameraBtn'),
   scanResult: byId('scanResult'), cameraSettings: byId('cameraSettings'), zoomControl: byId('zoomControl'),
   focusControl: byId('focusControl'), zoomValue: byId('zoomValue'), focusValue: byId('focusValue'),
@@ -28,6 +29,7 @@ const dom = {
 
 const STORAGE_KEY = 'qrtoqr-settings';
 const SHEET_URL_STORAGE_KEY = 'qrtoqr-google-sheet-url';
+const GOOGLE_AUTH_STORAGE_KEY = 'qrtoqr-google-authorized';
 const GOOGLE_CLIENT_ID = '287824088654-d53qa4ann3a1hq3uj917htsc0c0ormjr.apps.googleusercontent.com';
 const GOOGLE_API_KEY = 'AIzaSyB5YIk5RUPw0E518259rIc_lN5QhPs3fFM';
 const GOOGLE_APP_ID = '287824088654';
@@ -54,13 +56,20 @@ function loadSettings() {
     if (saved.outputSize) state.outputSize = Number(saved.outputSize);
     if (saved.zoom) state.zoom = Number(saved.zoom);
     if (saved.focus !== undefined) state.focus = Number(saved.focus);
+    if (saved.cameraHeightVh) state.cameraHeightVh = Math.min(70, Math.max(20, Number(saved.cameraHeightVh)));
   } catch { /* Ignore broken local settings. */ }
 }
 
 function saveSettings() {
   localStorage.setItem(STORAGE_KEY, JSON.stringify({
-    outputType: state.outputType, outputMode: state.outputMode, columnFormats: state.columnFormats, outputSize: state.outputSize, zoom: state.zoom, focus: state.focus, inputSettings: state.inputSettings,
+    outputType: state.outputType, outputMode: state.outputMode, columnFormats: state.columnFormats, outputSize: state.outputSize, zoom: state.zoom, focus: state.focus, cameraHeightVh: state.cameraHeightVh, inputSettings: state.inputSettings,
   }));
+}
+
+function applySectionRatio(heightVh = state.cameraHeightVh) {
+  state.cameraHeightVh = Math.min(70, Math.max(20, Number(heightVh) || 45));
+  dom.appShell.style.setProperty('--camera-height', `${state.cameraHeightVh}dvh`);
+  dom.sectionResizeHandle.setAttribute('aria-valuenow', String(Math.round(state.cameraHeightVh)));
 }
 
 function openLayer(element) {
@@ -678,13 +687,20 @@ function requestGoogleToken(callback) {
   initializeGoogleServices();
   if (!state.googleTokenClient) { callback(new Error(tr('Google認証を読み込めませんでした。ページを再読み込みしてください。', 'Google authorization did not load. Reload the page.'))); return; }
   if (state.googleAccessToken && Date.now() < state.googleTokenExpiresAt - 60000) { callback(null); return; }
+  let prompt = state.googleAccessToken ? '' : (localStorage.getItem(GOOGLE_AUTH_STORAGE_KEY) === 'true' ? '' : 'consent');
   state.googleTokenClient.callback = (response) => {
+    if (response.error && prompt === '' && !state.googleAccessToken) {
+      localStorage.removeItem(GOOGLE_AUTH_STORAGE_KEY); prompt = 'consent';
+      state.googleTokenClient.requestAccessToken({ prompt });
+      return;
+    }
     if (response.error) { callback(new Error(response.error)); return; }
     state.googleAccessToken = response.access_token;
     state.googleTokenExpiresAt = Date.now() + (Number(response.expires_in) || 3600) * 1000;
+    localStorage.setItem(GOOGLE_AUTH_STORAGE_KEY, 'true');
     callback(null);
   };
-  state.googleTokenClient.requestAccessToken({ prompt: state.googleAccessToken ? '' : 'consent' });
+  state.googleTokenClient.requestAccessToken({ prompt });
 }
 
 function requestGoogleTokenPromise() {
@@ -899,12 +915,20 @@ function initializeEvents() {
   dom.focusControl.addEventListener('input', () => { state.focus = Number(dom.focusControl.value); dom.focusValue.textContent = state.focus.toFixed(2); saveSettings(); applyCameraControl('focusDistance', state.focus); });
   dom.switchCameraBtn.addEventListener('click', async () => { state.facingMode = state.facingMode === 'environment' ? 'user' : 'environment'; await startCamera(); });
   dom.retryCameraBtn.addEventListener('click', startCamera);
+  let resizingSections = false;
+  const resizeSections = (clientY) => { const viewportHeight = document.documentElement.clientHeight || window.innerHeight; applySectionRatio((clientY / viewportHeight) * 100 - 5); };
+  dom.sectionResizeHandle.addEventListener('pointerdown', (event) => { event.preventDefault(); event.stopPropagation(); resizingSections = true; dom.sectionResizeHandle.classList.add('is-dragging'); dom.sectionResizeHandle.setPointerCapture?.(event.pointerId); });
+  dom.sectionResizeHandle.addEventListener('pointermove', (event) => { if (resizingSections) resizeSections(event.clientY); });
+  const finishSectionResize = () => { if (!resizingSections) return; resizingSections = false; dom.sectionResizeHandle.classList.remove('is-dragging'); saveSettings(); };
+  dom.sectionResizeHandle.addEventListener('pointerup', finishSectionResize); dom.sectionResizeHandle.addEventListener('pointercancel', finishSectionResize); dom.sectionResizeHandle.addEventListener('lostpointercapture', finishSectionResize);
+  dom.sectionResizeHandle.addEventListener('keydown', (event) => { if (!['ArrowUp','ArrowDown','Home','End'].includes(event.key)) return; event.preventDefault(); if (event.key === 'Home') applySectionRatio(20); else if (event.key === 'End') applySectionRatio(70); else applySectionRatio(state.cameraHeightVh + (event.key === 'ArrowDown' ? 2 : -2)); saveSettings(); });
   window.addEventListener('pagehide', stopCamera);
   window.addEventListener('beforeunload', (event) => { if (state.dirtyCells.size) event.preventDefault(); });
 }
 
 function init() {
   loadSettings();
+  applySectionRatio();
   dom.googleSheetUrl.value = localStorage.getItem(SHEET_URL_STORAGE_KEY) || '';
   dom.outputType.value = state.outputType; dom.outputSize.value = String(state.outputSize);
   renderFormatOptions(); renderColumnFormatSettings(); syncOutputModeUI();
