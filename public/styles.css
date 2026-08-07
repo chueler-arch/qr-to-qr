@@ -39,6 +39,7 @@
 .import-choice-button span{display:grid;gap:3px}.import-choice-button strong{font-size:.8rem}.import-choice-button small{color:var(--muted);font-size:.63rem;line-height:1.4}
 .drive-choice{border-color:#afd0b9;background:#f4fbf6}.drive-choice svg{stroke:#188038}
 .public-sheet-title{margin:0;font-size:1.15rem;letter-spacing:-.03em}
+.spreadsheet-url-description{display:block;margin:10px 0 6px;color:var(--muted);font-size:.7rem;font-weight:400;line-height:1.45}
 .spreadsheet-url-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;align-items:stretch}
 .spreadsheet-url-row .primary-button{width:auto;margin:0;padding:9px 13px;white-space:nowrap}
 .spreadsheet-help{margin:8px 0 0;color:#425269;font-size:.69rem;line-height:1.55}
