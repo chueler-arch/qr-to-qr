@@ -304,6 +304,21 @@ function clearOutput(message) {
   dom.outputPager.replaceChildren();
 }
 
+function renderQrCanvas(canvas, value, size) {
+  const qr = window.qrcode(0, 'M'); qr.addData(value, 'Byte'); qr.make();
+  const modules = qr.getModuleCount(); const margin = 2; const cells = modules + margin * 2;
+  canvas.width = size; canvas.height = size;
+  const context = canvas.getContext('2d'); context.fillStyle = '#fff'; context.fillRect(0, 0, size, size); context.fillStyle = '#000';
+  for (let row = 0; row < modules; row += 1) {
+    for (let column = 0; column < modules; column += 1) {
+      if (!qr.isDark(row, column)) continue;
+      const left = Math.floor(((column + margin) * size) / cells); const top = Math.floor(((row + margin) * size) / cells);
+      const right = Math.ceil(((column + margin + 1) * size) / cells); const bottom = Math.ceil(((row + margin + 1) * size) / cells);
+      context.fillRect(left, top, right - left, bottom - top);
+    }
+  }
+}
+
 function renderBarcode(value, format = state.outputType) {
   if (!value) { clearOutput(tr('対応するデータがありません', 'No matching data')); return; }
   const canvas = dom.barcodeCanvas;
@@ -312,9 +327,7 @@ function renderBarcode(value, format = state.outputType) {
   if (!analysis.valid) { const context = canvas.getContext('2d'); context.clearRect(0, 0, canvas.width, canvas.height); renderLinkedText(dom.valueText, value); return; }
   try {
     if (format === 'QR') {
-      QRCode.toCanvas(canvas, analysis.encodedValue, { width: state.outputSize, margin: 2 }, (error) => {
-        if (error) clearOutput(tr('QRコードを描画できませんでした', 'Could not render the QR code'));
-      });
+      renderQrCanvas(canvas, analysis.encodedValue, state.outputSize);
     } else {
       JsBarcode(canvas, analysis.encodedValue, { format, displayValue: false, margin: 8, width: 2, height: Math.max(64, state.outputSize * .48) });
     }
@@ -964,7 +977,7 @@ function init() {
   dom.zoomValue.textContent = `${state.zoom.toFixed(1)}×`;
   initializeEvents();
   window.addEventListener('load', initializeGoogleServices);
-  if (!(window.JsBarcode && window.QRCode && window.jsQR && window.XLSX && window.ZXing && window.Quagga)) setImportStatus(tr('必要なライブラリを読み込めませんでした。', 'Required libraries could not be loaded.'), true);
+  if (!(window.JsBarcode && window.qrcode && window.jsQR && window.XLSX && window.ZXing && window.Quagga)) setImportStatus(tr('必要なライブラリを読み込めませんでした。', 'Required libraries could not be loaded.'), true);
   startCamera();
 }
 
