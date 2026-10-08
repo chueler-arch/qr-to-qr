@@ -6,7 +6,7 @@
     'コードを枠内に合わせてください':'Align the code inside the frame','カメラ設定':'Camera Settings','ズーム':'Zoom',
     'フォーカス':'Focus','前面／背面を切替':'Switch Front / Rear','データをインポートしてください':'Please import data',
     'タップしてインポート画面を開く':'Tap to open the import dialog','コードをスキャンしてください':'Scan a code',
-    '使い方・ヘルプ':'Help','このアプリについて':'About','利用規約':'Terms','プライバシーポリシー':'Privacy',
+    '活用ガイド':'Practical Guide','使い方・ヘルプ':'Help','このアプリについて':'About','利用規約':'Terms','プライバシーポリシー':'Privacy','同意設定':'Consent Settings',
     'データインポート':'Import Data','Excel / CSVファイルを選択':'Choose Excel / CSV file','または':'OR',
     '公開Google Spreadsheet':'Public Google Spreadsheet','Spreadsheetを読み込む':'Load Spreadsheet',
     'A列を検索キー、B列以降を表示値として読み込みます。1行目はタイトルとして使用します。':'Column A is the lookup key; columns B onward are output values. Row 1 is used as titles.',
@@ -74,9 +74,13 @@
       const translated = translations[source];
       if (translated) node.nodeValue = node.nodeValue.replace(node.nodeValue.trim(), language === 'en' ? translated : source);
     }
+    document.querySelectorAll('[data-en]').forEach((element) => {
+      if (!element.dataset.ja) element.dataset.ja = element.textContent;
+      element.textContent = language === 'en' ? element.dataset.en : element.dataset.ja;
+    });
     document.querySelectorAll('.language-toggle').forEach((button) => { button.textContent = language === 'en' ? 'JP' : 'EN'; button.setAttribute('aria-label', language === 'en' ? '日本語に切り替え' : 'Switch to English'); });
     if (language === 'en') {
-      const titles = { '/': 'QRtoQR | QR & Barcode Converter', '/index.html': 'QRtoQR | QR & Barcode Converter', '/how-to-use.html': 'Help | QRtoQR', '/about.html': 'About | QRtoQR', '/terms.html': 'Terms | QRtoQR', '/privacy.html': 'Privacy Policy | QRtoQR' };
+      const titles = { '/': 'QRtoQR | QR & Barcode Converter', '/index.html': 'QRtoQR | QR & Barcode Converter', '/how-to-use.html': 'Help | QRtoQR', '/guides.html': 'Practical Guide | QRtoQR', '/about.html': 'About | QRtoQR', '/terms.html': 'Terms | QRtoQR', '/privacy.html': 'Privacy Policy | QRtoQR', '/privacy-settings.html': 'Privacy and Consent Settings | QRtoQR' };
       document.title = titles[location.pathname] || document.title;
     } else document.title = originalTitle;
     document.dispatchEvent(new CustomEvent('qrtoqr-language-change', { detail: { language } }));
