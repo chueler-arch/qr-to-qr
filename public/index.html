@@ -155,7 +155,7 @@
     <div id="fileImportModal" class="modal-layer" aria-hidden="true">
       <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="fileImportTitle">
         <div class="panel-title-row"><div><span class="eyebrow">IMPORT</span><h2 id="fileImportTitle">ファイルを選択する</h2></div><button class="icon-button close-button dark-button" data-close="fileImportModal" type="button" aria-label="閉じる">×</button></div>
-        <label class="file-drop" for="fileInput"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L8 8m4-4 4 4M4 15v5h16v-5" /></svg><strong>Excel / CSVファイルを選択</strong><span>.csv, .xlsx, .xls, .xlsm</span><input id="fileInput" type="file" accept=".csv,.xlsx,.xls,.xlsm" /></label>
+        <label class="file-drop" for="fileInput"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4m0 0L8 8m4-4 4 4M4 15v5h16v-5" /></svg><strong>Excel / CSVファイルを選択</strong><span>.csv, .xlsx, .xlsm</span><input id="fileInput" type="file" accept=".csv,.xlsx,.xlsm" /></label>
         <div class="divider"><span>または</span></div>
         <h3 class="public-sheet-title">GoogleスプレッドシートURLを指定</h3>
         <label class="spreadsheet-url-description" for="googleSheetUrl">共有で公開設定したGoogle SpreadsheetのリンクURLを貼ってください。</label>
@@ -191,7 +191,7 @@
     </div>
 
     <script src="https://accounts.google.com/gsi/client" async defer></script><script src="https://apis.google.com/js/api.js" async defer></script>
-    <script src="i18n.js"></script><script src="vendor/xlsx.full.min.js"></script><script src="vendor/JsBarcode.all.min.js"></script>
+    <script src="i18n.js"></script><script src="vendor/exceljs.min.js"></script><script src="vendor/JsBarcode.all.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/qrcode-generator@1.4.4/qrcode.min.js" integrity="sha384-lQXOAyZwHXE55JFyrOMB7nY2Wv+m5ZWNtJcHrd1rceRQXAYNLak8ukN5TjBTcIwz" crossorigin="anonymous"></script><script src="vendor/jsQR.min.js"></script><script src="vendor/zxing.min.js"></script><script src="vendor/quagga.min.js"></script><script src="app.js"></script>
   </body>
 </html>

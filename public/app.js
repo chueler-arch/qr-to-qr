@@ -214,11 +214,16 @@ async function importFromFile(file) {
   try {
     const extension = file.name.split('.').pop()?.toLowerCase();
     if (extension === 'csv') updateEntries(parseCSV(await file.text()));
-    else if (['xlsx', 'xls', 'xlsm'].includes(extension)) {
-      const workbook = XLSX.read(await file.arrayBuffer(), { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rawRows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
-      updateEntries(rawRows.filter((row) => row.length >= 2));
+    else if (['xlsx', 'xlsm'].includes(extension)) {
+      const workbook = new ExcelJS.Workbook();
+      await workbook.xlsx.load(await file.arrayBuffer());
+      const sheet = workbook.worksheets[0];
+      const rawRows = [];
+      sheet?.eachRow({ includeEmpty: false }, (row) => {
+        const values = row.values.slice(1).map((value) => String(value?.text ?? value ?? ''));
+        if (values.length >= 2) rawRows.push(values);
+      });
+      updateEntries(rawRows);
     } else setImportStatus(tr('CSVまたはExcelファイルを選択してください。', 'Choose a CSV or Excel file.'), true);
   } catch (error) { setImportStatus(error.message || tr('ファイルを読み込めませんでした。', 'The file could not be loaded.'), true); }
   finally { dom.fileInput.value = ''; setImportLoading(false); }
@@ -977,7 +982,7 @@ function init() {
   dom.zoomValue.textContent = `${state.zoom.toFixed(1)}×`;
   initializeEvents();
   window.addEventListener('load', initializeGoogleServices);
-  if (!(window.JsBarcode && window.qrcode && window.jsQR && window.XLSX && window.ZXing && window.Quagga)) setImportStatus(tr('必要なライブラリを読み込めませんでした。', 'Required libraries could not be loaded.'), true);
+  if (!(window.JsBarcode && window.qrcode && window.jsQR && window.ExcelJS && window.ZXing && window.Quagga)) setImportStatus(tr('必要なライブラリを読み込めませんでした。', 'Required libraries could not be loaded.'), true);
   startCamera();
 }
 

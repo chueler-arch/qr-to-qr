@@ -13,9 +13,12 @@
   "type": "commonjs",
   "dependencies": {
     "@zxing/library": "^0.21.3",
+    "exceljs": "^4.4.0",
     "jsbarcode": "^3.12.3",
     "jsqr": "^1.4.0",
-    "qrcode": "^1.5.4",
-    "xlsx": "^0.18.5"
+    "qrcode": "^1.5.4"
+  },
+  "overrides": {
+    "uuid": "11.1.1"
   }
 }
